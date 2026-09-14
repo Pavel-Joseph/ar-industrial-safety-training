@@ -19,7 +19,7 @@ from reportlab.platypus import (
 
 
 ROOT = Path(__file__).resolve().parents[2]
-OUTPUT = ROOT / "output" / "pdf" / "AR_Industrial_Safety_Seven_Day_Workflow.pdf"
+OUTPUT = ROOT / "output" / "pdf" / "Repository_Based_Seven_Day_Workflow.pdf"
 OUTPUT.parent.mkdir(parents=True, exist_ok=True)
 
 PAGE_W, PAGE_H = letter
@@ -126,9 +126,9 @@ doc = BaseDocTemplate(
     str(OUTPUT), pagesize=letter,
     leftMargin=0.68 * inch, rightMargin=0.68 * inch,
     topMargin=0.62 * inch, bottomMargin=0.62 * inch,
-    title="AR Industrial Safety Training Platform Seven-Day Workflow",
+    title="Repository-Based Seven-Day AR Industrial Safety Workflow",
     author="Project Team",
-    subject="Seven-day implementation workflow for a four-person prototype team",
+    subject="Repository-based seven-day implementation workflow for a four-person prototype team",
 )
 frame = Frame(
     doc.leftMargin, doc.bottomMargin,
@@ -145,7 +145,7 @@ story.extend([
     Spacer(1, 0.56 * inch),
     p("PROJECT DELIVERY PLAN", "CoverKicker"),
     p("AR Industrial Safety<br/>Training Platform", "CoverTitle"),
-    p("Seven-day workflow for a four-person prototype team", "CoverSubtitle"),
+    p("Repository-based seven-day workflow for a four-person prototype team", "CoverSubtitle"),
 ])
 
 metric_data = [
@@ -163,9 +163,10 @@ metrics.setStyle(TableStyle([
 ]))
 story.extend([metrics, Spacer(1, 0.28 * inch), p("Project overview", "HeadingSmall")])
 story.append(p(
-    "Build a demonstrable Android AR safety-training platform in seven days. The team works in parallel, "
-    "proves one complete training journey early, reuses that foundation for the second module, and reserves "
-    "the final two days for integration, testing and demonstration readiness."
+    "The repository currently contains an empty Unity project skeleton, an initial Node package, a Vite/React "
+    "starter nested under the backend, and placeholder folders for assets, documentation and localisation. "
+    "The team will correct the repository layout on Day 1, prove one complete training journey early, reuse "
+    "that foundation for the second module, and reserve the final two days for testing and demonstration readiness."
 ))
 story.append(p("Required project features", "HeadingSmall"))
 features = [
@@ -193,8 +194,8 @@ story.extend([Spacer(1, 5), dgms, PageBreak()])
 
 # Roles and feature ownership
 story.extend([
-    p("Team roles and feature ownership", "SectionTitle"),
-    p("Each feature has one accountable lead. Supporting owners provide the integration pieces and review evidence required to accept it.", "SectionIntro"),
+    p("Repository setup and feature ownership", "SectionTitle"),
+    p("Day 1 begins with repository correction. Each feature then has one accountable lead and named integration support.", "SectionIntro"),
 ])
 role_rows = [
     ["Person 1", "Unity AR and training modules", "Android AR app, training interactions, local assessment events and final APK"],
@@ -244,8 +245,11 @@ owner_table.setStyle(TableStyle([
     ("BOTTOMPADDING", (0, 0), (-1, -1), 5.5),
 ]))
 story.extend([owner_table, Spacer(1, 8), p(
-    "<b>Day 1 agreement:</b> Person 2 owns the shared data contract. The team agrees worker, module, attempt "
-    "and certificate identifiers; assessment events; pass criteria; language keys; API responses; and sync states.",
+    "<b>Repository actions before feature work:</b> Move <b>backend/admin-dashboard</b> to root-level "
+    "<b>admin-dashboard</b>; keep the backend and dashboard as separate applications; create the real Unity "
+    "project through Unity Hub; add a project .gitignore; exclude tmp render files; decide whether output PDFs "
+    "belong in Git; and commit the clean baseline. Person 2 owns the shared data contract for worker, module, "
+    "attempt and certificate identifiers, assessment events, pass criteria, API responses and sync states.",
     "BodySmall"), PageBreak()])
 
 
@@ -280,7 +284,7 @@ workflows = [
         "Person 3", "React admin dashboard", ORANGE,
         "Own the administrator experience and browser-based certificate verification journey.",
         [
-            ("Day 1 - Dashboard foundation", "Create React and Vite foundations, routing, login layout, navigation and page shells for overview, workers, results, worker details and certificates.", "Navigable dashboard skeleton and endpoint checklist."),
+            ("Day 1 - Dashboard correction", "Move the existing Vite/React starter from backend/admin-dashboard to root-level admin-dashboard. Remove the starter screen, then add routing, navigation and page shells for overview, workers, results and certificates.", "Separated dashboard application and endpoint checklist."),
             ("Day 2 - Workers", "Build login, summary cards, worker listing and worker details using contract-shaped sample data until live endpoints are ready. Include loading, empty and error states.", "Login and worker list with clear data states."),
             ("Day 3 - Results", "Display module, score, pass/fail, completion time and worker history. Add worker and module filters and align all fields with the assessment response.", "Results and worker-detail pages ready for real attempts."),
             ("Day 4 - Certificates", "Build certificate management and a public verification page opened by the QR URL. Show valid, unknown and invalid/revoked states with DGMS-aligned wording.", "Sample QR opens the matching verification record."),
@@ -293,7 +297,7 @@ workflows = [
         "Person 4", "Offline, localisation, assets and testing", TEAL,
         "Own the cross-cutting mobile support work and coordinate device-level quality checks.",
         [
-            ("Day 1 - Baseline", "Choose low-poly assets and scene budgets. Define shared language keys, confirm the Santali script/reviewer, design local result and sync states, and list target phones.", "Asset list, translation sheet, offline design and device list."),
+            ("Day 1 - Baseline", "Add the shared .gitignore and help verify the clean repository baseline. Choose low-poly assets and scene budgets, define language keys, confirm the Santali script/reviewer, design sync states and list target phones.", "Clean baseline, asset list, translation sheet and device list."),
             ("Day 2 - Fire support", "Optimise exit, fire and extinguisher assets. Prepare Hindi and Santali strings for shared UI and Fire instructions. Test fonts and glyph rendering in Unity.", "Import-ready Fire assets and tracked language strings."),
             ("Day 3 - Offline queue", "Implement SQLite or local storage for completed attempts and queued uploads. Persist attempt IDs and scoring version and restore pending items after restart.", "A Fire attempt survives loss of connectivity and restart."),
             ("Day 4 - Gas and sync", "Deliver hazard-zone and PPE assets plus Gas and buddy-system strings. Connect the queue to the sync API and remove entries only after acknowledgement.", "Gas assets integrated; results sync without duplicates."),
@@ -381,7 +385,7 @@ story.extend([
     p("Localisation, offline storage and device constraints begin on Day 1 because they shape the core design.", "SectionIntro"),
 ])
 priorities = [
-    ("1", "Prove the foundation", "Confirm AR support on the demonstration phones and establish working mobile, backend and dashboard projects."),
+    ("1", "Correct and prove the foundation", "Separate the dashboard from the backend, commit a clean baseline, confirm AR support and establish working mobile, backend and dashboard projects."),
     ("2", "Finish the Fire journey", "Complete Fire from interaction through assessment, local persistence and backend storage."),
     ("3", "Complete Gas and offline sync", "Reuse the working interaction framework and prove restart-safe, duplicate-safe synchronisation."),
     ("4", "Complete the required experience", "Finish QR certificates, Hindi and Santali, low-poly optimisation and live admin views."),
