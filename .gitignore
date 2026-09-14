@@ -1,0 +1,43 @@
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+
+# Node.js
+node_modules/
+npm-debug.log*
+coverage/
+dist/
+
+# Unity generated folders
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+
+# Unity-generated IDE files
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+
+# Android signing and build outputs
+*.apk
+*.aab
+*.keystore
+*.jks
+.gradle/
+
+# Local tools and editors
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Generated scratch files
+tmp/
