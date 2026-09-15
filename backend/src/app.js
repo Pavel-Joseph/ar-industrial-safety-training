@@ -5,9 +5,13 @@ const express = require('express');
 const helmet = require('helmet');
 
 const { env } = require('./config/env');
+const { authRouter } = require('./routes/auth.routes');
 const { errorHandler } = require('./middleware/error-handler');
 const { notFound } = require('./middleware/not-found');
 const { healthRouter } = require('./routes/health.routes');
+const { moduleRouter } = require('./routes/module.routes');
+const { resultRouter } = require('./routes/result.routes');
+const { workerRouter } = require('./routes/worker.routes');
 
 function createApp() {
   const app = express();
@@ -32,6 +36,10 @@ function createApp() {
   });
 
   app.use('/api/health', healthRouter);
+  app.use('/api/auth', authRouter);
+  app.use('/api/workers', workerRouter);
+  app.use('/api/modules', moduleRouter);
+  app.use('/api/results', resultRouter);
   app.use(notFound);
   app.use(errorHandler);
 

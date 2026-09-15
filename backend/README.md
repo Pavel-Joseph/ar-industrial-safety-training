@@ -1,8 +1,10 @@
 # Backend API
 
-Backend foundation for the AR Industrial Safety Training Platform. It provides
-the Express API, PostgreSQL access, assessment processing, offline-result sync,
-and DGMS-aligned certificate verification.
+Backend foundation for the AR Industrial Safety Training Platform. It currently
+provides the Express API, PostgreSQL access, administrator authentication, and
+protected worker, module, and assessment-result reads. Assessment processing,
+offline-result sync, and DGMS-aligned certificate verification follow in later
+workflows.
 
 ## Day 1 setup
 
@@ -27,11 +29,36 @@ the API is running but the database is unavailable.
 
 Run the application tests with `npm test`.
 
-## Day 1 scope
+## Day 2 authentication
 
-Day 1 defines the system boundaries and data contract. Authentication,
-assessment calculation, result sync, QR generation and certificate issuance are
-represented in the schema and API contract but are implemented on later days.
+Set `DEMO_ADMIN_EMAIL` and `DEMO_ADMIN_PASSWORD` in `.env`, then run:
+
+```text
+npm run db:migrate
+npm run db:seed
+```
+
+Log in with `POST /api/auth/login`. Send the returned access token to protected
+routes using `Authorization: Bearer <token>`.
+
+Day 2 protected routes:
+
+```text
+GET  /api/workers
+POST /api/workers
+GET  /api/workers/:workerId
+GET  /api/modules
+GET  /api/modules/:moduleId
+GET  /api/results
+GET  /api/results/:attemptId
+```
+
+## Scope boundary
+
+Days 1 and 2 define the system boundaries, data contract, authentication, and
+the first dashboard-facing APIs. Assessment calculation, result sync, QR
+generation and certificate issuance are represented in the schema and API
+contract but are implemented on later days.
 
 Certificates must be described as DGMS-aligned competency-based certificates.
 The prototype must not claim that DGMS issued, approved or accredited them.

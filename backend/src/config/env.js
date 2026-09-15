@@ -24,8 +24,18 @@ const env = Object.freeze({
     'postgresql://postgres:postgres@localhost:5432/ar_safety_training',
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   jwtSecret: process.env.JWT_SECRET || 'development-only-change-me',
+  jwtExpiresInSeconds: parseInteger('JWT_EXPIRES_IN_SECONDS', 28_800),
   dbPoolMax: parseInteger('DB_POOL_MAX', 10),
   dbConnectionTimeoutMs: parseInteger('DB_CONNECTION_TIMEOUT_MS', 5000),
+  demoAdminEmail: process.env.DEMO_ADMIN_EMAIL || '',
+  demoAdminPassword: process.env.DEMO_ADMIN_PASSWORD || '',
 });
+
+if (
+  env.nodeEnv === 'production' &&
+  (env.jwtSecret === 'development-only-change-me' || env.jwtSecret.length < 32)
+) {
+  throw new Error('JWT_SECRET must contain at least 32 characters in production');
+}
 
 module.exports = { env };

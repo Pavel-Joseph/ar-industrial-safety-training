@@ -12,6 +12,7 @@
 | `attempt_actions` | Ordered evidence recorded during an attempt |
 | `assessment_results` | Authoritative backend score and pass/fail result |
 | `certificates` | Certificate status and public verification identifier |
+| `schema_migrations` | Records each applied SQL migration |
 
 ## Important integrity rules
 
@@ -22,6 +23,7 @@
   step identifier.
 - Language values are restricted to English, Hindi and Santali codes.
 - Certificate status is restricted to valid, revoked or expired.
+- User passwords are stored as salted scrypt hashes, never as plaintext.
 
 ## Relationship summary
 

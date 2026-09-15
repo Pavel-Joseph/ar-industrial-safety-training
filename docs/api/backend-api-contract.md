@@ -23,7 +23,7 @@ Errors use the following shape:
 }
 ```
 
-## Day 1 implemented endpoints
+## Implemented endpoints
 
 ### `GET /`
 
@@ -34,16 +34,66 @@ Identifies the service and links to the health endpoint.
 Returns `200` when the API and PostgreSQL are available. Returns `503` with a
 degraded state when the API is running but PostgreSQL cannot be reached.
 
+### `POST /api/auth/login`
+
+```json
+{
+  "email": "admin@example.com",
+  "password": "the-password-configured-during-seeding"
+}
+```
+
+The response includes a Bearer access token, expiry in seconds and the user's
+ID, email and role. Use the token on protected endpoints:
+
+```text
+Authorization: Bearer <accessToken>
+```
+
+### Worker endpoints
+
+| Method | Path | Access |
+|---|---|---|
+| GET | `/api/workers` | Admin or safety officer |
+| POST | `/api/workers` | Admin or safety officer |
+| GET | `/api/workers/:workerId` | Admin or safety officer |
+
+Worker lists accept `search`, `active`, `limit` and `offset` query parameters.
+The maximum page size is 100.
+
+Create-worker request:
+
+```json
+{
+  "employeeCode": "MINE-001",
+  "fullName": "Example Worker",
+  "preferredLanguage": "hi"
+}
+```
+
+### Module endpoints
+
+| Method | Path | Access |
+|---|---|---|
+| GET | `/api/modules` | Admin or safety officer |
+| GET | `/api/modules/:moduleId` | Admin or safety officer |
+
+### Assessment-result endpoints
+
+| Method | Path | Access |
+|---|---|---|
+| GET | `/api/results` | Admin or safety officer |
+| GET | `/api/results/:attemptId` | Admin or safety officer |
+
+Result lists accept `workerId`, `moduleId`, `passed`, `limit` and `offset` query
+parameters. Day 2 provides read access to results. Day 3 adds the assessment
+logic that creates them.
+
 ## Planned endpoints
 
 | Method | Path | Purpose | Planned day |
 |---|---|---|---|
-| POST | `/api/auth/login` | Authenticate an administrator or safety officer | 2 |
-| GET | `/api/modules` | List active training modules and versions | 2 |
-| GET | `/api/workers` | List workers | 2 |
-| GET | `/api/workers/:workerId` | Read worker progress | 2 |
 | POST | `/api/attempts/sync` | Validate and store an offline attempt | 3-5 |
-| GET | `/api/results` | Filter assessment results | 3 |
 | GET | `/api/dashboard/summary` | Provide dashboard totals | 5 |
 | GET | `/api/certificates` | List certificates for administrators | 4 |
 | GET | `/api/verify/:publicId` | Publicly verify a certificate | 4 |

@@ -3,6 +3,7 @@ const { after, before, test } = require('node:test');
 
 const { createApp } = require('../src/app');
 const { closeDatabase } = require('../src/config/database');
+const { signAccessToken } = require('../src/services/token.service');
 
 let baseUrl;
 let server;
@@ -52,4 +53,40 @@ test('GET /api/health reports database state', async () => {
   assert.ok([200, 503].includes(response.status));
   assert.ok(['ok', 'degraded'].includes(body.status));
   assert.ok(body.dependencies.database.status);
+});
+
+test('protected worker routes require a Bearer token', async () => {
+  const response = await fetch(`${baseUrl}/api/workers`);
+  const body = await response.json();
+
+  assert.equal(response.status, 401);
+  assert.equal(body.error.code, 'AUTHENTICATION_REQUIRED');
+});
+
+test('result routes validate attempt identifiers after authentication', async () => {
+  const token = signAccessToken({
+    id: '87c16c44-4efd-4a9f-ac47-48ae83727125',
+    email: 'admin@example.com',
+    role: 'admin',
+  });
+  const response = await fetch(`${baseUrl}/api/results/not-a-uuid`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  const body = await response.json();
+
+  assert.equal(response.status, 400);
+  assert.equal(body.error.code, 'INVALID_ATTEMPT_ID');
+});
+
+test('login validates the request before querying the database', async () => {
+  const response = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: 'invalid', password: 'short' }),
+  });
+  const body = await response.json();
+
+  assert.equal(response.status, 400);
+  assert.equal(body.error.code, 'VALIDATION_ERROR');
+  assert.equal(body.error.details.length, 2);
 });
