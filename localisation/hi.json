@@ -1,0 +1,14 @@
+{
+    "app.title": "औद्योगिक सुरक्षा प्रशिक्षण",
+    "menu.start_training": "प्रशिक्षण शुरू करें",
+    "menu.settings": "सेटिंग्स",
+    "safety.warning": "चेतावनी",
+    "safety.danger": "खतरा",
+    "safety.stop": "रुकें",
+    "safety.wear_helmet": "सुरक्षा हेलमेट पहनें",
+    "safety.wear_gloves": "सुरक्षा दस्ताने पहनें",
+    "safety.wear_goggles": "सुरक्षा चश्मा पहनें",
+    "training.complete": "प्रशिक्षण पूरा हुआ",
+    "training.score": "आपका स्कोर",
+    "training.try_again": "फिर से प्रयास करें"
+}

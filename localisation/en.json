@@ -1,0 +1,14 @@
+{
+    "app.title": "Industrial Safety Training",
+    "menu.start_training": "Start Training",
+    "menu.settings": "Settings",
+    "safety.warning": "Warning",
+    "safety.danger": "Danger",
+    "safety.stop": "Stop",
+    "safety.wear_helmet": "Wear a safety helmet",
+    "safety.wear_gloves": "Wear safety gloves",
+    "safety.wear_goggles": "Wear safety goggles",
+    "training.complete": "Training Complete",
+    "training.score": "Your Score",
+    "training.try_again": "Try Again"
+}
