@@ -1,11 +1,20 @@
+const fs = require('node:fs/promises');
+const path = require('node:path');
+
 const { closeDatabase, query } = require('../config/database');
 const { env } = require('../config/env');
 const { hashPassword } = require('../services/password.service');
 const { runSqlFile } = require('./run-sql-file');
 
 async function seed() {
-  await runSqlFile('../../database/seeds/001_demo_data.sql');
-  console.log('Demonstration modules and workers loaded');
+  const seedDirectory = path.resolve(__dirname, '../../database/seeds');
+  const files = (await fs.readdir(seedDirectory))
+    .filter((file) => file.endsWith('.sql'))
+    .sort();
+  for (const filename of files) {
+    await runSqlFile(`../../database/seeds/${filename}`);
+    console.log(`Loaded seed ${filename}`);
+  }
 
   if (!env.demoAdminEmail || !env.demoAdminPassword) {
     console.log(

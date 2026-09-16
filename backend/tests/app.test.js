@@ -63,6 +63,36 @@ test('protected worker routes require a Bearer token', async () => {
   assert.equal(body.error.code, 'AUTHENTICATION_REQUIRED');
 });
 
+test('attempt submissions require a Bearer token', async () => {
+  const response = await fetch(`${baseUrl}/api/attempts/sync`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: '{}',
+  });
+  const body = await response.json();
+
+  assert.equal(response.status, 401);
+  assert.equal(body.error.code, 'AUTHENTICATION_REQUIRED');
+});
+
+test('attempt submissions validate evidence before reaching the database', async () => {
+  const token = signAccessToken({
+    id: '87c16c44-4efd-4a9f-ac47-48ae83727125',
+    email: 'admin@example.com',
+    role: 'admin',
+  });
+  const response = await fetch(`${baseUrl}/api/attempts/sync`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    body: '{}',
+  });
+  const body = await response.json();
+
+  assert.equal(response.status, 400);
+  assert.equal(body.error.code, 'VALIDATION_ERROR');
+  assert.ok(body.error.details.some((detail) => detail.field === 'attemptId'));
+});
+
 test('result routes validate attempt identifiers after authentication', async () => {
   const token = signAccessToken({
     id: '87c16c44-4efd-4a9f-ac47-48ae83727125',

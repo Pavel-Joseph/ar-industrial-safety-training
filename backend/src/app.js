@@ -5,6 +5,7 @@ const express = require('express');
 const helmet = require('helmet');
 
 const { env } = require('./config/env');
+const { attemptRouter } = require('./routes/attempt.routes');
 const { authRouter } = require('./routes/auth.routes');
 const { errorHandler } = require('./middleware/error-handler');
 const { notFound } = require('./middleware/not-found');
@@ -37,6 +38,7 @@ function createApp() {
 
   app.use('/api/health', healthRouter);
   app.use('/api/auth', authRouter);
+  app.use('/api/attempts', attemptRouter);
   app.use('/api/workers', workerRouter);
   app.use('/api/modules', moduleRouter);
   app.use('/api/results', resultRouter);

@@ -17,10 +17,17 @@
 ## Important integrity rules
 
 - `training_attempts.attempt_id` is unique, making offline retries idempotent.
+- `training_attempts.payload_hash` detects reuse of an attempt ID with different
+  evidence; identical retries return the original result.
 - One result can exist for each training attempt.
 - One certificate can exist for each passing training attempt.
 - Assessment rules are unique by module, module version, scoring version and
   step identifier.
+- Day 3 scores each correct step by its configured weight. Required steps must
+  be present, critical steps must be correct, and the percentage must meet the
+  module pass mark. `assessment_results.scoring_details` retains the breakdown.
+- The seeded Fire and Gas rules are illustrative only. Changing real rules
+  requires a new scoring version and qualified safety review.
 - Language values are restricted to English, Hindi and Santali codes.
 - Certificate status is restricted to valid, revoked or expired.
 - User passwords are stored as salted scrypt hashes, never as plaintext.

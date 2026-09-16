@@ -23,6 +23,7 @@ function mapResult(row) {
       maximum: Number(row.maximum_score),
       percentage: Number(row.percentage),
       passed: row.passed,
+      details: row.scoring_details,
     },
     languageCode: row.language_code,
     startedAt: row.started_at,
@@ -47,6 +48,7 @@ const SELECT_RESULT = `
          ar.maximum_score,
          ar.percentage,
          ar.passed,
+         ar.scoring_details,
          ar.evaluated_at
     FROM assessment_results ar
     JOIN training_attempts ta ON ta.id = ar.training_attempt_id

@@ -86,14 +86,26 @@ Create-worker request:
 | GET | `/api/results/:attemptId` | Admin or safety officer |
 
 Result lists accept `workerId`, `moduleId`, `passed`, `limit` and `offset` query
-parameters. Day 2 provides read access to results. Day 3 adds the assessment
-logic that creates them.
+parameters. Results include the backend score, pass/fail status and per-step
+scoring details.
+
+### `POST /api/attempts/sync`
+
+Day 3 submission is restricted to an admin or safety-officer Bearer token. It
+evaluates synchronously and stores the attempt, actions and result in one
+transaction. This endpoint is not yet an Android worker authentication flow;
+the app must not contain an admin token.
+
+The first accepted submission returns `201`. Repeating the same attempt ID and
+evidence returns `200` and the stored score. Reusing the ID with different
+evidence returns `409 ATTEMPT_ID_CONFLICT`. A missing worker or module returns
+`404`; an inactive worker/module, version mismatch or unconfigured rules
+returns `409`. Unknown steps return `422`.
 
 ## Planned endpoints
 
 | Method | Path | Purpose | Planned day |
 |---|---|---|---|
-| POST | `/api/attempts/sync` | Validate and store an offline attempt | 3-5 |
 | GET | `/api/dashboard/summary` | Provide dashboard totals | 5 |
 | GET | `/api/certificates` | List certificates for administrators | 4 |
 | GET | `/api/verify/:publicId` | Publicly verify a certificate | 4 |
@@ -121,28 +133,47 @@ second attempt.
   "actions": [
     {
       "stepId": "identify_exit",
-      "selectedValue": "exit-b",
+      "selectedValue": "safe-exit",
       "occurredAt": "2026-09-14T08:31:10.000Z",
       "sequenceNumber": 0
+    },
+    {
+      "stepId": "extinguisher_use",
+      "selectedValue": "correct-sequence",
+      "occurredAt": "2026-09-14T08:33:10.000Z",
+      "sequenceNumber": 1
+    },
+    {
+      "stepId": "evacuation_sequence",
+      "selectedValue": "assembly-point",
+      "occurredAt": "2026-09-14T08:36:10.000Z",
+      "sequenceNumber": 2
     }
   ]
 }
 ```
 
-Expected sync acknowledgement:
+Successful assessment acknowledgement:
 
 ```json
 {
   "data": {
     "attemptId": "7ff03331-8b53-43c8-af38-9ac67b30e13a",
     "syncStatus": "accepted",
-    "resultStatus": "pending-evaluation",
-    "certificateStatus": "not-eligible-yet"
+    "resultStatus": "evaluated",
+    "certificateStatus": "not-issued",
+    "score": {
+      "total": 100,
+      "maximum": 100,
+      "percentage": 100,
+      "passed": true
+    }
   }
 }
 ```
 
-The passing mark in the demonstration seed is a prototype value. Final rules
-must be reviewed with qualified safety-domain stakeholders and versioned before
-use. Certificates must use DGMS-aligned wording and must not be represented as
-official DGMS certification.
+The passing mark and correct responses in the demonstration seed are prototype
+values. Required steps must be present, critical steps must be correct, and
+the score must meet the pass mark. Final rules must be reviewed with qualified
+safety-domain stakeholders and versioned before use. Certificates must use
+DGMS-aligned wording and must not be represented as official DGMS certification.
