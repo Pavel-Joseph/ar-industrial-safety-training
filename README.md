@@ -1,1 +1,0 @@
-# ar-industrial-safety-training
