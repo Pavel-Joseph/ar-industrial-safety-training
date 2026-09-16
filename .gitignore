@@ -1,0 +1,28 @@
+# Unity-generated caches and local settings
+/mobile-ar/[Ll]ibrary/
+/mobile-ar/[Tt]emp/
+/mobile-ar/[Oo]bj/
+/mobile-ar/[Ll]ogs/
+/mobile-ar/[Uu]ser[Ss]ettings/
+/mobile-ar/.utmp/
+/mobile-ar/.vs/
+
+# Build outputs
+/mobile-ar/[Bb]uild/
+/mobile-ar/[Bb]uilds/
+/mobile-ar/[Mm]emoryCaptures/
+/mobile-ar/[Rr]ecordings/
+/mobile-ar/*.apk
+/mobile-ar/*.aab
+
+# Generated IDE project files
+/mobile-ar/*.csproj
+/mobile-ar/*.sln
+/mobile-ar/*.slnx
+/mobile-ar/*.suo
+/mobile-ar/*.user
+/mobile-ar/*.userprefs
+/mobile-ar/*.pidb
+/mobile-ar/*.booproj
+
+# Keep Assets (including .meta files), Packages and ProjectSettings tracked.
