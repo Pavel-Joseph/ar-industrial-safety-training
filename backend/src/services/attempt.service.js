@@ -25,7 +25,7 @@ function acknowledgement(attemptId, result, duplicate) {
     attemptId,
     syncStatus: duplicate ? 'already-accepted' : 'accepted',
     resultStatus: 'evaluated',
-    certificateStatus: 'not-issued',
+    certificateStatus: result.certificate_status || 'not-issued',
     score: {
       total: Number(result.total_score),
       maximum: Number(result.maximum_score),
@@ -38,9 +38,14 @@ function acknowledgement(attemptId, result, duplicate) {
 async function existingAcknowledgement(client, attemptId, hash) {
   const existing = await client.query(
     `SELECT ta.payload_hash, ar.total_score, ar.maximum_score,
-            ar.percentage, ar.passed
+            ar.percentage, ar.passed,
+            CASE WHEN c.id IS NULL THEN 'not-issued'
+                 WHEN c.status IN ('revoked', 'expired') THEN c.status
+                 WHEN c.expires_at <= NOW() THEN 'expired'
+                 ELSE 'valid' END AS certificate_status
        FROM training_attempts ta
        LEFT JOIN assessment_results ar ON ar.training_attempt_id = ta.id
+       LEFT JOIN certificates c ON c.training_attempt_id = ta.id
       WHERE ta.attempt_id = $1
       FOR UPDATE OF ta`,
     [attemptId],

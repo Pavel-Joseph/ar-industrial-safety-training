@@ -93,6 +93,49 @@ test('attempt submissions validate evidence before reaching the database', async
   assert.ok(body.error.details.some((detail) => detail.field === 'attemptId'));
 });
 
+test('certificate management requires authentication', async () => {
+  const response = await fetch(`${baseUrl}/api/certificates`);
+  const body = await response.json();
+  assert.equal(response.status, 401);
+  assert.equal(body.error.code, 'AUTHENTICATION_REQUIRED');
+});
+
+test('certificate issuance requires a future expiry and valid attempt ID', async () => {
+  const token = signAccessToken({
+    id: '87c16c44-4efd-4a9f-ac47-48ae83727125',
+    email: 'admin@example.com',
+    role: 'admin',
+  });
+  const response = await fetch(`${baseUrl}/api/certificates`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    body: JSON.stringify({ attemptId: 'bad', expiresAt: '2020-01-01T00:00:00Z' }),
+  });
+  const body = await response.json();
+  assert.equal(response.status, 400);
+  assert.equal(body.error.code, 'VALIDATION_ERROR');
+  assert.equal(body.error.details.length, 2);
+});
+
+test('only administrators can revoke certificates', async () => {
+  const token = signAccessToken({
+    id: '87c16c44-4efd-4a9f-ac47-48ae83727125',
+    email: 'officer@example.com',
+    role: 'safety_officer',
+  });
+  const response = await fetch(
+    `${baseUrl}/api/certificates/7ff03331-8b53-43c8-af38-9ac67b30e13a/status`,
+    {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      body: JSON.stringify({ status: 'revoked', reason: 'Testing role protection' }),
+    },
+  );
+  const body = await response.json();
+  assert.equal(response.status, 403);
+  assert.equal(body.error.code, 'FORBIDDEN');
+});
+
 test('result routes validate attempt identifiers after authentication', async () => {
   const token = signAccessToken({
     id: '87c16c44-4efd-4a9f-ac47-48ae83727125',

@@ -7,6 +7,11 @@ const helmet = require('helmet');
 const { env } = require('./config/env');
 const { attemptRouter } = require('./routes/attempt.routes');
 const { authRouter } = require('./routes/auth.routes');
+const {
+  certificateRouter,
+  verificationApiRouter,
+  verificationPageRouter,
+} = require('./routes/certificate.routes');
 const { errorHandler } = require('./middleware/error-handler');
 const { notFound } = require('./middleware/not-found');
 const { healthRouter } = require('./routes/health.routes');
@@ -39,6 +44,9 @@ function createApp() {
   app.use('/api/health', healthRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/attempts', attemptRouter);
+  app.use('/api/certificates', certificateRouter);
+  app.use('/api/verify', verificationApiRouter);
+  app.use('/verify', verificationPageRouter);
   app.use('/api/workers', workerRouter);
   app.use('/api/modules', moduleRouter);
   app.use('/api/results', resultRouter);

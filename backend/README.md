@@ -2,10 +2,10 @@
 
 Backend foundation for the AR Industrial Safety Training Platform. It currently
 provides the Express API, PostgreSQL access, administrator authentication, and
-protected worker, module, and assessment-result reads. Day 3 adds a protected
-attempt-submission endpoint that calculates and stores an assessment result.
-Worker-app authentication and DGMS-aligned certificate verification follow in
-later workflows.
+protected worker, module, and assessment-result reads. It calculates scores
+from training attempts and supports prototype certificate issuance, QR codes,
+and live verification. Worker-app authentication remains later integration
+work.
 
 ## Day 1 setup
 
@@ -73,14 +73,29 @@ token. Do not embed an admin token in the Android app. Worker-app authentication
 and offline queue integration remain separate work.
 
 Run `npm test` for unit/API checks. With a configured local PostgreSQL database,
-run `$env:RUN_DB_TESTS='1'; npm test` in PowerShell for the write-and-retry
-integration test; it cleans up its own records.
+run `$env:RUN_DB_TESTS='1'; npm test` in PowerShell for the attempt and
+certificate integration tests; they clean up their own records.
 
-## Scope boundary
+## Day 4 certificates
 
-Days 1–3 define the system boundaries, data contract, authentication, scoring,
-and the first dashboard-facing APIs. Worker-app authentication, an Android
-offline queue, QR generation and certificate issuance remain later work.
+Set `PUBLIC_BASE_URL` in `.env` to the externally reachable HTTPS origin before
+sharing QR codes. The local default `http://localhost:3000` works only on the
+same computer. Run `npm run db:migrate` for the certificate audit columns.
+
+An admin or safety officer issues a certificate with `POST /api/certificates`
+using a validated passing `attemptId` and an explicit future `expiresAt`.
+Issuance is idempotent for the same attempt and expiry; a failed attempt cannot
+receive a certificate. Protected endpoints list certificates, fetch one, and
+return its QR as SVG or a printable HTML certificate. Admins can revoke one
+with a reason. The QR opens `/verify/:publicId`, a public page that checks the
+current database status;
+`/api/verify/:publicId` provides the same status as JSON. Expiry is computed
+from the stored date, so a scanned certificate can change from valid to expired
+without a background job.
+
+Days 1–4 now cover authentication, scoring and prototype certificate
+verification. Worker-app authentication and the Android offline queue remain
+integration work.
 
 Certificates must be described as DGMS-aligned competency-based certificates.
 The prototype must not claim that DGMS issued, approved or accredited them.

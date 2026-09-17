@@ -30,6 +30,9 @@
   requires a new scoring version and qualified safety review.
 - Language values are restricted to English, Hindi and Santali codes.
 - Certificate status is restricted to valid, revoked or expired.
+- Certificate issue and revocation actors are recorded. Expiry is evaluated at
+  read time from `expires_at`, and a public random UUID identifies each record
+  without exposing the internal database ID in the QR URL.
 - User passwords are stored as salted scrypt hashes, never as plaintext.
 
 ## Relationship summary

@@ -102,14 +102,57 @@ evidence returns `409 ATTEMPT_ID_CONFLICT`. A missing worker or module returns
 `404`; an inactive worker/module, version mismatch or unconfigured rules
 returns `409`. Unknown steps return `422`.
 
+### Certificate endpoints
+
+| Method | Path | Access | Purpose |
+|---|---|---|---|
+| POST | `/api/certificates` | Admin or safety officer | Issue for a passing attempt |
+| GET | `/api/certificates` | Admin or safety officer | List and filter |
+| GET | `/api/certificates/:id` | Admin or safety officer | Certificate detail |
+| GET | `/api/certificates/:id/qr.svg` | Admin or safety officer | Download verification QR |
+| GET | `/api/certificates/:id/document.html` | Admin or safety officer | Printable certificate with embedded QR |
+| PATCH | `/api/certificates/:id/status` | Admin | Revoke with a reason |
+| GET | `/api/verify/:publicId` | Public | Current verification status as JSON |
+| GET | `/verify/:publicId` | Public | Human-readable verification page |
+
+Issuance request:
+
+```json
+{
+  "attemptId": "7ff03331-8b53-43c8-af38-9ac67b30e13a",
+  "expiresAt": "2027-09-17T00:00:00.000Z"
+}
+```
+
+The backend creates one certificate per validated passing attempt. Repeating
+the same request returns that certificate. A different expiry for the same
+attempt returns `409 CERTIFICATE_EXISTS`. The QR contains only the public
+verification URL, not a claim of government approval. The public response
+exposes a worker name, module, score and validity dates; keep this in mind when
+distributing certificates. Certificate lists accept `workerId`, `moduleId`,
+`status`, `limit` and `offset` filters.
+
+Certificate responses include `id`, `publicId`, `status`, `verificationUrl`,
+`qrSvgUrl` and `documentHtmlUrl`, along with worker, module, score, issue and
+expiry details. The SVG and printable document routes require a Bearer token;
+the dashboard should fetch them through its authenticated API client.
+
+Revocation request:
+
+```json
+{ "status": "revoked", "reason": "Issued in error" }
+```
+
+The public endpoint checks the database on each request and reports `valid`,
+`expired` or `revoked`. A valid result only verifies this project's training
+record. Set `PUBLIC_BASE_URL` to a reachable HTTPS origin before creating QR
+codes for phones; the local default points to the backend computer only.
+
 ## Planned endpoints
 
 | Method | Path | Purpose | Planned day |
 |---|---|---|---|
 | GET | `/api/dashboard/summary` | Provide dashboard totals | 5 |
-| GET | `/api/certificates` | List certificates for administrators | 4 |
-| GET | `/api/verify/:publicId` | Publicly verify a certificate | 4 |
-| PATCH | `/api/certificates/:id/status` | Revoke or update a certificate | 4 |
 
 ## Offline attempt contract
 
