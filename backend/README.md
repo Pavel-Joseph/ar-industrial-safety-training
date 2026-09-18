@@ -99,3 +99,8 @@ integration work.
 
 Certificates must be described as DGMS-aligned competency-based certificates.
 The prototype must not claim that DGMS issued, approved or accredited them.
+
+## Hosting
+
+See the [Render + Neon deployment guide](../docs/deployment/backend-render-neon.md)
+for the hosted backend and PostgreSQL setup.
