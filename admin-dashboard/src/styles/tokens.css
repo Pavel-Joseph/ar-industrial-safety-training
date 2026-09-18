@@ -1,0 +1,100 @@
+/*
+  Design language: "site command board" — v6, Forest & Ember palette.
+
+  Exact swatches supplied (all six used):
+    #122324  deepest forest-black  -> page background
+    #2F3A32  dark moss             -> panel/card surface
+    #545748  olive grey            -> raised surface, borders, one KPI accent
+    #DB9F75  warm peach            -> PRIMARY accent (nav, buttons, key data)
+    #804012  burnt orange          -> secondary accent (warnings, Fire module)
+    #3E2411  dark cocoa            -> deep accent (sunken rows, tag backgrounds)
+
+  Colour distribution is deliberate rather than "peach everywhere":
+    - peach   = primary interactive + headline numbers
+    - orange  = Fire module, caution states, second KPI
+    - olive   = neutral/structural, third KPI
+    - cocoa   = recessed surfaces + tag fills
+  Text inks and status green/red are derived to sit in the same warm,
+  desaturated family while staying legible on a dark ground.
+*/
+
+:root {
+  /* Exact supplied swatches */
+  --forest-black: #122324;
+  --moss: #2f3a32;
+  --olive: #545748;
+  --peach: #db9f75;
+  --ember: #804012;
+  --cocoa: #3e2411;
+
+  /* Derived tints/shades, same family */
+  --peach-soft: #efc9a8;
+  --peach-dim: rgba(219, 159, 117, 0.15);
+  --ember-bright: #a75a1d;
+  --ember-dim: rgba(128, 64, 18, 0.28);
+  --olive-light: #6e7261;
+  --olive-dim: rgba(84, 87, 72, 0.4);
+  --cocoa-dim: rgba(62, 36, 17, 0.5);
+
+  --ink: #f2ece3;
+  --ink-soft: #c2c4b4;
+  --ink-faint: #8d9184;
+
+  /* Core neutrals */
+  --bg: var(--forest-black);
+  --surface: var(--moss);
+  --surface-raised: #38443a;
+  --surface-sunken: #1b2a29;
+  --border: #44503f;
+  --border-strong: var(--olive);
+
+  /* Brand + accent roles (names kept stable across redesigns) */
+  --brand: var(--peach);
+  --brand-deep: #c4855c;
+  --brand-tint: var(--peach-dim);
+
+  --violet: var(--olive-light);
+  --violet-tint: var(--olive-dim);
+
+  --orange: var(--ember-bright);
+  --orange-tint: var(--ember-dim);
+
+  --teal: var(--peach);
+  --teal-tint: var(--peach-dim);
+
+  --pink: var(--cocoa);
+  --pink-tint: var(--cocoa-dim);
+
+  /* Status — legible green/amber/red, warmed to match the palette */
+  --signal-go: #8fbf7a;
+  --signal-go-strong: #6da356;
+  --signal-go-dim: rgba(109, 163, 86, 0.2);
+  --signal-caution: #e0b070;
+  --signal-caution-strong: var(--ember-bright);
+  --signal-caution-dim: rgba(167, 90, 29, 0.24);
+  --signal-stop: #e08b72;
+  --signal-stop-strong: #c4573a;
+  --signal-stop-dim: rgba(196, 87, 58, 0.22);
+
+  /* Semantic */
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-soft);
+  --text-muted: var(--ink-faint);
+  --accent: var(--brand);
+  --accent-strong: var(--brand-deep);
+  --accent-tint: var(--brand-tint);
+  --accent-contrast: #1a1208;
+
+  /* Type */
+  --font-ui: "Manrope", "Segoe UI", system-ui, sans-serif;
+  --font-heading: "Sora", "Manrope", "Segoe UI", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+
+  /* Scale */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --border-width: 1px;
+  --shadow-panel: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 12px 28px -18px rgba(0, 0, 0, 0.7);
+  --shadow-raised: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 22px 44px -20px rgba(0, 0, 0, 0.8);
+}
