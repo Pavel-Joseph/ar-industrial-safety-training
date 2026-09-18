@@ -2,8 +2,8 @@
 
 This setup deploys the Node API from `backend/` on Render and stores its data in
 Neon PostgreSQL. The repository's `render.yaml` creates one free Render web
-service. Render supplies its HTTPS URL to `PUBLIC_BASE_URL`, so certificate QR
-codes point to the hosted verification page.
+service. The API uses Render's `RENDER_EXTERNAL_URL` as its public base URL, so
+certificate QR codes point to the hosted verification page.
 
 ## 1. Create the database
 
@@ -33,8 +33,8 @@ will not appear there unless you migrate the data separately.
 The service builds with `npm ci`. On each start, it applies outstanding schema
 migrations, loads the idempotent demonstration modules and assessment rules,
 creates or updates the configured demo admin, and starts the API. Render creates
-`JWT_SECRET` automatically. The API's public URL is injected into
-`PUBLIC_BASE_URL`; do not enter a localhost or hotspot address on Render.
+`JWT_SECRET` automatically. Render provides `RENDER_EXTERNAL_URL` at runtime;
+do not enter a localhost or hotspot address as `PUBLIC_BASE_URL` on Render.
 
 ## 3. Check the deployment
 

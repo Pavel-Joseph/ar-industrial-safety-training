@@ -43,7 +43,9 @@ const env = Object.freeze({
     process.env.DATABASE_URL ||
     'postgresql://postgres:postgres@localhost:5432/ar_safety_training',
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  publicBaseUrl: parsePublicBaseUrl(process.env.PUBLIC_BASE_URL || 'http://localhost:3000'),
+  publicBaseUrl: parsePublicBaseUrl(
+    process.env.PUBLIC_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000',
+  ),
   jwtSecret: process.env.JWT_SECRET || 'development-only-change-me',
   jwtExpiresInSeconds: parseInteger('JWT_EXPIRES_IN_SECONDS', 28_800),
   dbPoolMax: parseInteger('DB_POOL_MAX', 10),
