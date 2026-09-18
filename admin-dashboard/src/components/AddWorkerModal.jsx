@@ -8,10 +8,8 @@ const LANGUAGE_OPTIONS = [
   { code: "en", label: "English" }
 ];
 
-// "+ Add Worker" — works against the live POST /api/workers endpoint once
-// Person 2 has it; until then it appends to the in-session sample data
-// (see createWorker in api/client.js) so the flow is fully demoable today.
 export default function AddWorkerModal({ onClose, onCreated }) {
+  const liveMode = api.isLiveMode();
   const [name, setName] = useState("");
   const [workerCode, setWorkerCode] = useState("");
   const [site, setSite] = useState("");
@@ -28,7 +26,7 @@ export default function AddWorkerModal({ onClose, onCreated }) {
       onCreated(res.data);
       onClose();
     } catch (err) {
-      setError("Couldn't add this worker. Check the details and try again.");
+      setError(err.message || "Couldn't add this worker. Check the details and try again.");
     } finally {
       setSubmitting(false);
     }
@@ -73,7 +71,7 @@ export default function AddWorkerModal({ onClose, onCreated }) {
               required
             />
           </div>
-          <div className="field">
+          {!liveMode && <div className="field">
             <label htmlFor="w-site">Site</label>
             <input
               id="w-site"
@@ -84,7 +82,7 @@ export default function AddWorkerModal({ onClose, onCreated }) {
               onChange={(e) => setSite(e.target.value)}
               required
             />
-          </div>
+          </div>}
           <div className="field">
             <label htmlFor="w-lang">Preferred language</label>
             <select

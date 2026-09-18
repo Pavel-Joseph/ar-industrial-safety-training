@@ -8,13 +8,9 @@ export function AuthProvider({ children }) {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    // A stored token means a previous session exists. We don't have a
-    // "whoami" endpoint in the draft contract yet, so we optimistically
-    // restore a minimal admin record; Person 2 can add GET /api/auth/me
-    // later and this is the only place that would need to change.
     const token = api.getToken();
     if (token) {
-      setAdmin({ name: "Site Administrator", email: "admin@site.local", role: "admin" });
+      setAdmin(api.getStoredAdmin() || { name: "Site Administrator", email: "", role: "admin" });
     }
     setChecking(false);
   }, []);

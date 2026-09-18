@@ -14,7 +14,10 @@ import * as api from "../api/client.js";
 const MODULE_PRESENTATION = {
   mod_fire: { Icon: Flame, color: "#a75a1d", descKey: "module_fire_desc" },
   mod_gas: { Icon: Wind, color: "#db9f75", fg: "#1a1208", descKey: "module_gas_desc" },
-  mod_bonus: { Icon: Mountain, color: "#6e7261", descKey: "module_bonus_desc" }
+  mod_bonus: { Icon: Mountain, color: "#6e7261", descKey: "module_bonus_desc" },
+  "fire-response": { Icon: Flame, color: "#a75a1d", descKey: "module_fire_desc" },
+  "gas-confined-space": { Icon: Wind, color: "#db9f75", fg: "#1a1208", descKey: "module_gas_desc" },
+  "jharkhand-mine-safety": { Icon: Mountain, color: "#6e7261", descKey: "module_bonus_desc" }
 };
 
 export default function About() {

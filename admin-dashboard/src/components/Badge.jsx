@@ -30,5 +30,6 @@ export function syncToBadge(syncState, t) {
 export function certStatusToBadge(status, t) {
   if (status === "valid") return { variant: "go", label: t("certificate_status_valid") };
   if (status === "revoked") return { variant: "stop", label: t("certificate_status_revoked") };
+  if (status === "expired") return { variant: "caution", label: t("certificate_status_expired") };
   return { variant: "neutral", label: t("certificate_status_unknown") };
 }

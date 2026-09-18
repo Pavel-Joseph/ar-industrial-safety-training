@@ -68,9 +68,6 @@ export default function WorkerDetail() {
   }
 
   const { worker, modules } = state;
-  // Defensive: if Person 2's backend doesn't embed attempts/certificates on
-  // the worker yet, fall back to empty arrays instead of throwing — the
-  // page still renders (with zeros) rather than crashing on connect.
   const attempts = [...(worker.attempts || [])].sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
   const certificateCount = (worker.certificates || []).length;
   const passedModuleIds = new Set(attempts.filter((a) => a.status === "pass").map((a) => a.moduleId));
@@ -85,7 +82,7 @@ export default function WorkerDetail() {
       : { variant: "caution", label: "Training in progress" };
 
   return (
-    <Layout title={worker.name} subtitle={`${worker.workerCode} · ${worker.site}`}>
+    <Layout title={worker.name} subtitle={[worker.workerCode, worker.site].filter(Boolean).join(" · ")}>
       <div className="flex-between" style={{ marginBottom: 16 }}>
         <Link to="/workers" className="link-btn">
           ← {t("worker_detail_back")}
@@ -104,7 +101,7 @@ export default function WorkerDetail() {
               {worker.name}
             </h1>
             <div className="text-muted" style={{ fontSize: 13, marginTop: 2 }}>
-              {worker.workerCode} · {worker.site}
+              {[worker.workerCode, worker.site].filter(Boolean).join(" · ")}
             </div>
           </div>
           <div style={{ marginLeft: "auto" }}>

@@ -40,10 +40,26 @@ export default function Workers() {
   const [state, setState] = useState({ status: "loading", data: [], source: "mock" });
   const [modules, setModules] = useState([]);
   const [attempts, setAttempts] = useState([]);
+  const [relatedLoading, setRelatedLoading] = useState(true);
+  const [relatedError, setRelatedError] = useState(false);
 
   useEffect(() => {
-    api.getModules().then((res) => setModules(res.data));
-    api.getAttempts().then((res) => setAttempts(res.data));
+    let cancelled = false;
+    Promise.all([api.getModules(), api.getAttempts()])
+      .then(([modulesRes, attemptsRes]) => {
+        if (!cancelled) {
+          setModules(modulesRes.data);
+          setAttempts(attemptsRes.data);
+          setRelatedLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRelatedError(true);
+          setRelatedLoading(false);
+        }
+      });
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -68,7 +84,7 @@ export default function Workers() {
   // endpoints needed. Once live data is larger, Person 2 can expose a
   // dedicated GET /api/sites, and this derivation can read from that
   // instead; nothing else on this page changes shape.
-  const siteOptions = useMemo(() => Array.from(new Set(state.data.map((w) => w.site))).sort(), [state.data]);
+  const siteOptions = useMemo(() => Array.from(new Set(state.data.map((w) => w.site).filter(Boolean))).sort(), [state.data]);
 
   const enriched = useMemo(() => {
     return state.data.map((w) => {
@@ -100,6 +116,7 @@ export default function Workers() {
   return (
     <Layout title={t("workers_title")} subtitle={`${state.status === "ready" ? state.data.length : "—"} registered workers`}>
       {state.source === "mock" && state.status === "ready" && <SampleDataBanner />}
+      {relatedError && <ErrorState />}
 
       <div className="two-col">
       <div className="panel">
@@ -121,14 +138,14 @@ export default function Workers() {
 
         <div className="panel-head">
           <div className="filters">
-            <select className="select" value={site} onChange={(e) => setSite(e.target.value)}>
+            {siteOptions.length > 0 && <select className="select" value={site} onChange={(e) => setSite(e.target.value)}>
               <option value="">{t("filter_all_sites")}</option>
               {siteOptions.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
               ))}
-            </select>
+            </select>}
             <select className="select" value={status} onChange={(e) => setStatus(e.target.value)}>
               <option value="">{t("filter_all_status")}</option>
               <option value="active">Active</option>
@@ -184,10 +201,10 @@ export default function Workers() {
                   </div>
 
                   <div className="worker-row-mid">
-                    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    {w.site && <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <MapPin size={13} strokeWidth={2.2} />
                       {w.site}
-                    </span>
+                    </span>}
                     <span>Last active {new Date(w.lastActive).toLocaleDateString()}</span>
                   </div>
 
@@ -228,8 +245,12 @@ export default function Workers() {
           </div>
         </div>
         <div className="panel-body no-pad">
-          {attempts.length === 0 ? (
+          {relatedLoading ? (
             <Loading rows={4} />
+          ) : relatedError ? (
+            <ErrorState />
+          ) : attempts.length === 0 ? (
+            <Empty title={t("empty_results")} body="" />
           ) : (
             <div className="table-wrap">
               <table className="data-table">
@@ -273,7 +294,9 @@ export default function Workers() {
           onCreated={() => {
             // Re-run the current search so the new worker appears immediately.
             setSearch((s) => s);
-            api.getWorkers(search).then((res) => setState({ status: "ready", data: res.data, source: res.source }));
+            api.getWorkers(search)
+              .then((res) => setState({ status: "ready", data: res.data, source: res.source }))
+              .catch(() => setState((s) => ({ ...s, status: "error" })));
           }}
         />
       )}

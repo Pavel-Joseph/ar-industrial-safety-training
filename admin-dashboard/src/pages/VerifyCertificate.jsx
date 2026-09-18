@@ -12,6 +12,7 @@ import * as api from "../api/client.js";
 const RING_STYLE = {
   valid: { bg: "var(--signal-go-dim)", color: "var(--signal-go)", Icon: CheckCircle2 },
   revoked: { bg: "var(--signal-stop-dim)", color: "var(--signal-stop)", Icon: XCircle },
+  expired: { bg: "var(--signal-stop-dim)", color: "var(--signal-stop)", Icon: XCircle },
   unknown: { bg: "var(--surface-sunken)", color: "var(--text-muted)", Icon: HelpCircle }
 };
 
@@ -43,6 +44,8 @@ export default function VerifyCertificate() {
       ? "verify_valid_title"
       : resultStatus === "revoked"
       ? "verify_revoked_title"
+      : resultStatus === "expired"
+      ? "verify_expired_title"
       : "verify_unknown_title";
 
   return (
@@ -87,6 +90,10 @@ export default function VerifyCertificate() {
                   <span>{t("verify_field_issued")}</span>
                   <span>{new Date(state.cert.issuedAt).toLocaleDateString()}</span>
                 </div>
+                {state.cert.expiresAt && <div className="kv-row">
+                  <span>{t("verify_field_expires")}</span>
+                  <span>{new Date(state.cert.expiresAt).toLocaleDateString()}</span>
+                </div>}
                 <div className="kv-row">
                   <span>{t("verify_field_id")}</span>
                   <span className="mono">{state.cert.certificateCode}</span>

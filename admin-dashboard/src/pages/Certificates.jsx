@@ -41,6 +41,7 @@ export default function Certificates() {
               <option value="">{t("filter_all_status")}</option>
               <option value="valid">{t("certificate_status_valid")}</option>
               <option value="revoked">{t("certificate_status_revoked")}</option>
+              <option value="expired">{t("certificate_status_expired")}</option>
             </select>
           </div>
         </div>

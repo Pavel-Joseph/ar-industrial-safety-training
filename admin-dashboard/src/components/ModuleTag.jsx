@@ -8,7 +8,10 @@ import { Flame, Wind, Mountain } from "lucide-react";
 const PRESENTATION = {
   mod_fire: { Icon: Flame, cls: "tag-fire", label: "Fire" },
   mod_gas: { Icon: Wind, cls: "tag-gas", label: "Gas" },
-  mod_bonus: { Icon: Mountain, cls: "tag-bonus", label: "Bonus" }
+  mod_bonus: { Icon: Mountain, cls: "tag-bonus", label: "Bonus" },
+  "fire-response": { Icon: Flame, cls: "tag-fire", label: "Fire" },
+  "gas-confined-space": { Icon: Wind, cls: "tag-gas", label: "Gas" },
+  "jharkhand-mine-safety": { Icon: Mountain, cls: "tag-bonus", label: "Bonus" }
 };
 
 export default function ModuleTag({ moduleId, moduleName }) {

@@ -1,342 +1,225 @@
-// ---------------------------------------------------------------------------
-// API CLIENT — the single place this dashboard talks to Person 2's backend.
-//
-// This file is deliberately the only file that knows about HTTP, endpoint
-// paths and response shapes. Every page imports functions from here instead
-// of calling fetch() directly, so when the real backend URL/paths differ
-// from the draft contract below, only this file needs to change.
-//
-// FALLBACK BEHAVIOUR
-// If VITE_API_BASE_URL is not set, or a GET request fails (backend not up
-// yet, CORS not configured, endpoint not built yet), every read function
-// below falls back to the contract-shaped sample data in mockData.js and
-// resolves normally with source: "mock" instead of throwing. Pages use that
-// flag to show the "sample data" banner via <DataState>. This means the
-// whole dashboard is demoable from Day 1 and swaps to live data the moment
-// the backend answers requests — no code changes required on this side.
-// Writes (login, createWorker) do NOT silently fall back to mock on a live
-// failure — a failed write should surface as an error, not pretend to
-// succeed against sample data.
-//
-// DRAFT CONTRACT (confirm with Person 2 on Day 1, update paths here only)
-//   POST   /api/auth/login              { email, password } -> { token, admin }
-//   GET    /api/summary                                     -> dashboard totals
-//   GET    /api/workers                 ?search=             -> Worker[]
-//   POST   /api/workers                 { name, workerCode, site, language } -> Worker
-//   GET    /api/workers/:id                                  -> Worker
-//   GET    /api/modules                                      -> Module[]
-//   GET    /api/attempts       ?workerId=&moduleId=&status=  -> Attempt[]
-//   GET    /api/certificates   ?status=                      -> Certificate[]
-//   GET    /api/certificates/verify/:certificateCode  (public, no auth)
-//                                                             -> Certificate | 404
-//
-// SHARED IDENTIFIERS (must match Person 2's schema and Person 1's event
-// payloads exactly, since attempt/worker/certificate IDs flow app -> API ->
-// dashboard unchanged):
-//   Worker      { id, name, workerCode, site, language, status, registeredAt }
-//                 status: "active" | "inactive"   <- new field, see README §4
-//   Module      { id, name, code }        code: "FIRE" | "GAS" | "BONUS"
-//                 Three modules now: the two required ones plus the
-//                 optional Jharkhand mine-worker bonus module from the
-//                 workflow plan. GET /api/modules should return all three
-//                 it has content for — the dashboard renders whatever list
-//                 comes back, so adding/removing a module needs no
-//                 dashboard changes.
-//   Attempt     { id, workerId, moduleId, score, status, durationSeconds,
-//                 syncState, completedAt, attemptNumber, scoringVersion }
-//                 status: "pass" | "fail"    syncState: "synced" | "pending"
-//   Certificate { id, certificateCode, workerId, moduleId, attemptId,
-//                 status, issuedAt }
-//                 status: "valid" | "revoked"
-//
-// If Person 2's backend doesn't return `status` on Worker yet, the UI
-// defaults missing values to "active" (see getWorkers/getWorker below) so
-// nothing breaks or shows "undefined" before that field ships.
-// ---------------------------------------------------------------------------
-
+// The dashboard's sole HTTP boundary. A configured API never falls back to
+// sample records on failure, so live errors cannot masquerade as real data.
 import { getMockModules, getMockWorkers, addMockWorker, getMockAttempts, getMockCertificates } from "./mockData.js";
+import { mapWorker, mapModule, mapResult, mapCertificate, mapVerification, summarize } from "./mappers.js";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
 const TOKEN_KEY = "dashboard_admin_token";
-const MOCK_DELAY_MS = 260;
+const ADMIN_KEY = "dashboard_admin_user";
+const PAGE_SIZE = 100;
+const delay = () => new Promise((resolve) => setTimeout(resolve, 260));
+const live = () => Boolean(BASE_URL);
 
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function withDefaultStatus(worker) {
-  return worker ? { status: "active", ...worker } : worker;
-}
-
+export function isLiveMode() { return live(); }
 export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (live() && token === "mock-session-token") {
+    clearToken();
+    return null;
+  }
+  if (live() && token?.split(".").length === 3) {
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+      if (payload.exp && payload.exp * 1000 <= Date.now()) {
+        clearToken();
+        return null;
+      }
+    } catch { /* The backend will reject an invalid token. */ }
+  }
+  return token;
 }
-
-function setToken(token) {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
+export function getStoredAdmin() {
+  try {
+    const value = JSON.parse(localStorage.getItem(ADMIN_KEY) || "null");
+    return value?.email ? value : null;
+  } catch { return null; }
 }
-
+function storeSession(token, admin) {
+  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(ADMIN_KEY, JSON.stringify(admin));
+}
 export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
-}
-
-function isLiveModeConfigured() {
-  return Boolean(BASE_URL);
+  localStorage.removeItem(ADMIN_KEY);
 }
 
 async function request(path, { method = "GET", body, auth = true } = {}) {
-  const headers = { "Content-Type": "application/json" };
-  if (auth) {
-    const token = getToken();
-    if (token) headers.Authorization = `Bearer ${token}`;
-  }
-
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined
+  const headers = {};
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (auth && getToken()) headers.Authorization = `Bearer ${getToken()}`;
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method, headers, body: body === undefined ? undefined : JSON.stringify(body)
   });
-
-  if (!res.ok) {
-    const err = new Error(`Request failed: ${res.status}`);
-    err.status = res.status;
-    throw err;
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    const error = new Error(payload?.error?.message || `Request failed: ${response.status}`);
+    error.status = response.status;
+    throw error;
   }
-
-  return res.json();
+  return response.json();
 }
 
-// A tiny in-memory mock "session" so login works believably in sample mode.
+// Backend list endpoints cap a page at 100. Fetch every page for accurate
+// totals, charts and worker histories.
+async function fetchAll(path, filters = {}) {
+  const all = [];
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const params = new URLSearchParams({ ...filters, limit: String(PAGE_SIZE), offset: String(offset) });
+    const page = await request(`${path}?${params}`);
+    if (!Array.isArray(page.data)) throw new Error(`Unexpected response from ${path}`);
+    all.push(...page.data);
+    if (page.data.length < PAGE_SIZE || all.length >= page.meta?.total) return all;
+  }
+}
+
 const DEMO_ADMIN = {
-  email: "admin@site.local",
-  password: "admin123",
+  email: "admin@site.local", password: "admin123",
   admin: { id: "adm_1", name: "Site Administrator", email: "admin@site.local", role: "admin" }
 };
 
-// ---------------------------------------------------------------------------
-// Auth
-// ---------------------------------------------------------------------------
-
 export async function login(email, password) {
-  if (isLiveModeConfigured()) {
-    try {
-      const data = await request("/api/auth/login", {
-        method: "POST",
-        body: { email, password },
-        auth: false
-      });
-      setToken(data.token);
-      return { admin: data.admin, source: "live" };
-    } catch (e) {
-      throw new Error("Sign-in failed. Check credentials or backend availability.");
-    }
+  if (live()) {
+    const response = await request("/api/auth/login", { method: "POST", body: { email, password }, auth: false });
+    if (!response.data?.accessToken || !response.data?.user) throw new Error("Unexpected login response from backend");
+    const admin = { ...response.data.user, name: "Site Administrator" };
+    storeSession(response.data.accessToken, admin);
+    return { admin, source: "live" };
   }
-
-  await delay(MOCK_DELAY_MS);
+  await delay();
   if (email.trim().toLowerCase() !== DEMO_ADMIN.email || password !== DEMO_ADMIN.password) {
     throw new Error("Invalid credentials");
   }
-  setToken("mock-session-token");
+  storeSession("mock-session-token", DEMO_ADMIN.admin);
   return { admin: DEMO_ADMIN.admin, source: "mock" };
 }
-
-export function logout() {
-  clearToken();
-}
-
-// ---------------------------------------------------------------------------
-// Fetchers — each tries live API first, falls back to sample data.
-// Every resolved value has shape: { data, source: "live" | "mock" }
-// ---------------------------------------------------------------------------
+export function logout() { clearToken(); }
 
 export async function getSummary() {
-  if (isLiveModeConfigured()) {
-    try {
-      const data = await request("/api/summary");
-      return { data, source: "live" };
-    } catch (e) {
-      /* fall through to mock */
-    }
+  if (live()) {
+    const [workers, attempts, certificates] = await Promise.all([getWorkers(), getAttempts(), getCertificates()]);
+    return { data: summarize(workers.data, attempts.data, certificates.data), source: "live" };
   }
-  await delay(MOCK_DELAY_MS);
-  const workers = getMockWorkers();
-  const attempts = getMockAttempts();
-  const certificates = getMockCertificates();
-  const passCount = attempts.filter((a) => a.status === "pass").length;
+  await delay();
+  return { data: summarize(getMockWorkers(), getMockAttempts(), getMockCertificates()), source: "mock" };
+}
+
+export async function getWorkers(search = "") {
+  if (live()) {
+    const rows = await fetchAll("/api/workers", search ? { search } : {});
+    return { data: rows.map(mapWorker), source: "live" };
+  }
+  await delay();
+  const q = search.trim().toLowerCase();
   return {
-    data: {
-      workerCount: workers.length,
-      attemptCount: attempts.length,
-      passRate: attempts.length ? Math.round((passCount / attempts.length) * 100) : 0,
-      certificateCount: certificates.filter((c) => c.status === "valid").length,
-      pendingSyncCount: attempts.filter((a) => a.syncState === "pending").length
-    },
+    data: getMockWorkers().filter((w) => !q || w.name.toLowerCase().includes(q) || w.workerCode.toLowerCase().includes(q)),
     source: "mock"
   };
 }
 
-export async function getWorkers(search = "") {
-  if (isLiveModeConfigured()) {
-    try {
-      const data = await request(`/api/workers?search=${encodeURIComponent(search)}`);
-      return { data: data.map(withDefaultStatus), source: "live" };
-    } catch (e) {
-      /* fall through */
-    }
-  }
-  await delay(MOCK_DELAY_MS);
-  const q = search.trim().toLowerCase();
-  const all = getMockWorkers();
-  const workers = q
-    ? all.filter((w) => w.name.toLowerCase().includes(q) || w.workerCode.toLowerCase().includes(q))
-    : all;
-  return { data: workers, source: "mock" };
-}
-
-// Used by the "+ Add Worker" form on the Workers page. In live mode this is
-// a real write and failures are surfaced to the caller (no silent mock
-// fallback for a create — pretending it succeeded would be misleading).
 export async function createWorker({ name, workerCode, site, language }) {
-  if (isLiveModeConfigured()) {
-    const data = await request("/api/workers", {
-      method: "POST",
-      body: { name, workerCode, site, language }
+  if (live()) {
+    const response = await request("/api/workers", {
+      method: "POST", body: { fullName: name, employeeCode: workerCode, preferredLanguage: language }
     });
-    return { data: withDefaultStatus(data), source: "live" };
+    return { data: mapWorker(response.data), source: "live" };
   }
-
-  await delay(MOCK_DELAY_MS);
-  const worker = {
-    id: `wkr_${Date.now()}`,
-    name,
-    workerCode,
-    site,
-    language,
-    status: "active",
-    registeredAt: new Date().toISOString()
-  };
+  await delay();
+  const worker = { id: `wkr_${Date.now()}`, name, workerCode, site, language, status: "active", registeredAt: new Date().toISOString() };
   return { data: addMockWorker(worker), source: "mock" };
 }
 
 export async function getWorker(workerId) {
-  if (isLiveModeConfigured()) {
-    try {
-      const data = await request(`/api/workers/${workerId}`);
-      return { data: withDefaultStatus(data), source: "live" };
-    } catch (e) {
-      /* fall through */
-    }
+  if (live()) {
+    const response = await request(`/api/workers/${encodeURIComponent(workerId)}`);
+    const [attempts, certificates] = await Promise.all([getAttempts({ workerId }), getCertificates({ workerId })]);
+    return { data: { ...mapWorker(response.data), attempts: attempts.data, certificates: certificates.data }, source: "live" };
   }
-  await delay(MOCK_DELAY_MS);
+  await delay();
   const worker = getMockWorkers().find((w) => w.id === workerId) || null;
-  const attempts = getMockAttempts().filter((a) => a.workerId === workerId);
-  const certificates = getMockCertificates().filter((c) => c.workerId === workerId);
-  return { data: worker ? { ...worker, attempts, certificates } : null, source: "mock" };
-}
-
-export async function getModules() {
-  if (isLiveModeConfigured()) {
-    try {
-      const data = await request("/api/modules");
-      return { data, source: "live" };
-    } catch (e) {
-      /* fall through */
-    }
-  }
-  await delay(MOCK_DELAY_MS);
-  return { data: getMockModules(), source: "mock" };
-}
-
-export async function getAttempts({ workerId, moduleId, status } = {}) {
-  if (isLiveModeConfigured()) {
-    try {
-      const params = new URLSearchParams();
-      if (workerId) params.set("workerId", workerId);
-      if (moduleId) params.set("moduleId", moduleId);
-      if (status) params.set("status", status);
-      const data = await request(`/api/attempts?${params.toString()}`);
-      return { data, source: "live" };
-    } catch (e) {
-      /* fall through */
-    }
-  }
-  await delay(MOCK_DELAY_MS);
-  let attempts = getMockAttempts();
-  if (workerId) attempts = attempts.filter((a) => a.workerId === workerId);
-  if (moduleId) attempts = attempts.filter((a) => a.moduleId === moduleId);
-  if (status) attempts = attempts.filter((a) => a.status === status);
-
-  const workersById = Object.fromEntries(getMockWorkers().map((w) => [w.id, w]));
-  const modulesById = Object.fromEntries(getMockModules().map((m) => [m.id, m]));
-  const enriched = attempts
-    .map((a) => ({
-      ...a,
-      workerName: workersById[a.workerId]?.name ?? "Unknown",
-      workerCode: workersById[a.workerId]?.workerCode ?? "—",
-      moduleName: modulesById[a.moduleId]?.name ?? "Unknown module"
-    }))
-    .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
-
-  return { data: enriched, source: "mock" };
-}
-
-export async function getCertificates({ status } = {}) {
-  if (isLiveModeConfigured()) {
-    try {
-      const params = new URLSearchParams();
-      if (status) params.set("status", status);
-      const data = await request(`/api/certificates?${params.toString()}`);
-      return { data, source: "live" };
-    } catch (e) {
-      /* fall through */
-    }
-  }
-  await delay(MOCK_DELAY_MS);
-  const all = getMockCertificates();
-  let certs = status ? all.filter((c) => c.status === status) : all;
-  const workersById = Object.fromEntries(getMockWorkers().map((w) => [w.id, w]));
-  const modulesById = Object.fromEntries(getMockModules().map((m) => [m.id, m]));
-  const enriched = certs.map((c) => ({
-    ...c,
-    workerName: workersById[c.workerId]?.name ?? "Unknown",
-    moduleName: modulesById[c.moduleId]?.name ?? "Unknown module"
-  }));
-  return { data: enriched, source: "mock" };
-}
-
-// Public — deliberately unauthenticated. Opened directly from a QR code by
-// anyone, including someone with no admin session, so it must never require
-// a token and must never return more than these fields.
-export async function verifyCertificate(certificateCode) {
-  if (isLiveModeConfigured()) {
-    try {
-      const data = await request(
-        `/api/certificates/verify/${encodeURIComponent(certificateCode)}`,
-        { auth: false }
-      );
-      return { data, source: "live" };
-    } catch (e) {
-      if (e.status === 404) return { data: null, source: "live" };
-      /* fall through to mock on network/other errors */
-    }
-  }
-  await delay(MOCK_DELAY_MS);
-  const cert = getMockCertificates().find((c) => c.certificateCode === certificateCode) || null;
-  if (!cert) return { data: null, source: "mock" };
-  const workersById = Object.fromEntries(getMockWorkers().map((w) => [w.id, w]));
-  const modulesById = Object.fromEntries(getMockModules().map((m) => [m.id, m]));
   return {
-    data: {
-      certificateCode: cert.certificateCode,
-      status: cert.status,
-      issuedAt: cert.issuedAt,
-      workerName: workersById[cert.workerId]?.name ?? "Unknown",
-      moduleName: modulesById[cert.moduleId]?.name ?? "Unknown module"
-    },
+    data: worker ? {
+      ...worker,
+      attempts: getMockAttempts().filter((a) => a.workerId === workerId),
+      certificates: getMockCertificates().filter((c) => c.workerId === workerId)
+    } : null,
     source: "mock"
   };
 }
 
-export function isLiveMode() {
-  return isLiveModeConfigured();
+export async function getModules() {
+  if (live()) {
+    const response = await request("/api/modules");
+    return { data: response.data.map(mapModule), source: "live" };
+  }
+  await delay();
+  return { data: getMockModules(), source: "mock" };
+}
+
+export async function getAttempts({ workerId, moduleId, status } = {}) {
+  if (live()) {
+    const filters = {};
+    if (workerId) filters.workerId = workerId;
+    if (moduleId) filters.moduleId = moduleId;
+    if (status === "pass" || status === "fail") filters.passed = String(status === "pass");
+    return { data: (await fetchAll("/api/results", filters)).map(mapResult), source: "live" };
+  }
+  await delay();
+  let attempts = getMockAttempts();
+  if (workerId) attempts = attempts.filter((a) => a.workerId === workerId);
+  if (moduleId) attempts = attempts.filter((a) => a.moduleId === moduleId);
+  if (status) attempts = attempts.filter((a) => a.status === status);
+  const workers = Object.fromEntries(getMockWorkers().map((w) => [w.id, w]));
+  const modules = Object.fromEntries(getMockModules().map((m) => [m.id, m]));
+  return {
+    data: attempts.map((a) => ({ ...a,
+      workerName: workers[a.workerId]?.name ?? "Unknown",
+      workerCode: workers[a.workerId]?.workerCode ?? "—",
+      moduleName: modules[a.moduleId]?.name ?? "Unknown module"
+    })).sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt)),
+    source: "mock"
+  };
+}
+
+export async function getCertificates({ workerId, moduleId, status } = {}) {
+  if (live()) {
+    const filters = {};
+    if (workerId) filters.workerId = workerId;
+    if (moduleId) filters.moduleId = moduleId;
+    if (status) filters.status = status;
+    return { data: (await fetchAll("/api/certificates", filters)).map(mapCertificate), source: "live" };
+  }
+  await delay();
+  let certificates = getMockCertificates();
+  if (workerId) certificates = certificates.filter((c) => c.workerId === workerId);
+  if (moduleId) certificates = certificates.filter((c) => c.moduleId === moduleId);
+  if (status) certificates = certificates.filter((c) => c.status === status);
+  const workers = Object.fromEntries(getMockWorkers().map((w) => [w.id, w]));
+  const modules = Object.fromEntries(getMockModules().map((m) => [m.id, m]));
+  return { data: certificates.map((c) => ({ ...c,
+    workerName: workers[c.workerId]?.name ?? "Unknown",
+    moduleName: modules[c.moduleId]?.name ?? "Unknown module"
+  })), source: "mock" };
+}
+
+// Public verification does not require an admin session.
+export async function verifyCertificate(certificateCode) {
+  if (live()) {
+    try {
+      const response = await request(`/api/verify/${encodeURIComponent(certificateCode)}`, { auth: false });
+      return { data: mapVerification(response.data), source: "live" };
+    } catch (error) {
+      if (error.status === 400 || error.status === 404) return { data: null, source: "live" };
+      throw error;
+    }
+  }
+  await delay();
+  const cert = getMockCertificates().find((c) => c.certificateCode === certificateCode) || null;
+  if (!cert) return { data: null, source: "mock" };
+  const workers = Object.fromEntries(getMockWorkers().map((w) => [w.id, w]));
+  const modules = Object.fromEntries(getMockModules().map((m) => [m.id, m]));
+  return { data: {
+    certificateCode: cert.certificateCode, status: cert.status, issuedAt: cert.issuedAt,
+    workerName: workers[cert.workerId]?.name ?? "Unknown",
+    moduleName: modules[cert.moduleId]?.name ?? "Unknown module"
+  }, source: "mock" };
 }

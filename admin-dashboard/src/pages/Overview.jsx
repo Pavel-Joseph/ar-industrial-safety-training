@@ -225,7 +225,7 @@ export default function Overview() {
   const siteBreakdown = React.useMemo(() => {
     const bySite = {};
     state.workers.forEach((w) => {
-      bySite[w.site] = (bySite[w.site] || 0) + 1;
+      if (w.site) bySite[w.site] = (bySite[w.site] || 0) + 1;
     });
     const max = Math.max(1, ...Object.values(bySite));
     const palette = [ICON_PEACH, ICON_EMBER, ICON_OLIVE, "#efc9a8", ICON_COCOA];
@@ -531,6 +531,8 @@ export default function Overview() {
               <div className="panel-body">
                 {state.status === "loading" ? (
                   <Loading rows={2} />
+                ) : siteBreakdown.length === 0 ? (
+                  <p className="text-muted">Site data is not stored in the backend yet.</p>
                 ) : (
                   siteBreakdown.map((s) => (
                     <div className="progress-row" key={s.site}>

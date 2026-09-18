@@ -43,10 +43,10 @@ export function SampleDataBanner() {
     <div
       className="badge badge-caution"
       style={{ marginBottom: 14, display: "inline-flex" }}
-      title="VITE_API_BASE_URL is not set or the backend didn't respond, so this view is showing sample data shaped like the real API."
+      title="VITE_API_BASE_URL is not set, so this view is showing sample data."
     >
       <span className="bulb" />
-      Sample data — {t("error_generic_body")}
+      Sample data — set VITE_API_BASE_URL to connect live records.
     </div>
   );
 }
