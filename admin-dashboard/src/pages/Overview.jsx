@@ -29,8 +29,6 @@ import {
 } from "lucide-react";
 import Layout from "../components/Layout.jsx";
 import StatCard from "../components/StatCard.jsx";
-import Badge, { statusToBadge } from "../components/Badge.jsx";
-import ModuleTag from "../components/ModuleTag.jsx";
 import { Loading, ErrorState, SampleDataBanner } from "../components/DataState.jsx";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 import { isLiveMode } from "../api/client.js";
@@ -174,47 +172,6 @@ export default function Overview() {
       return row;
     });
   }, [state.attempts, state.modules]);
-  const strongestModule = React.useMemo(() => {
-  if (!state.modules?.length || !state.attempts?.length) return null;
-
-  const totals = {};
-
-  state.attempts.forEach((attempt) => {
-    if (!totals[attempt.moduleId]) {
-      totals[attempt.moduleId] = {
-        passed: 0,
-        total: 0,
-      };
-    }
-
-    totals[attempt.moduleId].total += 1;
-
-    if (attempt.status === "pass") {
-      totals[attempt.moduleId].passed += 1;
-    }
-  });
-
-  let best = null;
-
-  state.modules.forEach((module) => {
-    const result = totals[module.id];
-
-    if (!result || result.total === 0) return;
-
-    const passRate = Math.round(
-      (result.passed / result.total) * 100
-    );
-
-    if (!best || passRate > best.passRate) {
-      best = {
-        ...module,
-        passRate,
-      };
-    }
-  });
-
-  return best;
-}, [state.attempts, state.modules]);
 
   // RADAR CHART — pass vs fail share per module. Pass + Fail always totals
   // 100% on each axis, so the shape reads directly as "how much of this
@@ -233,6 +190,15 @@ export default function Overview() {
       };
     });
   }, [state.modules, state.attempts]);
+
+  // Which module currently has the highest overall pass rate — used in the
+  // area chart's subtitle ("Fire and Explosion Response leading at 71%").
+  // This was accidentally dropped in a previous edit while removing the
+  // old gauge chart's data, which is what caused the ReferenceError.
+  const strongestModule = React.useMemo(
+    () => radarData.reduce((best, m) => (m.attempts > 0 && m.Pass > (best?.Pass ?? -1) ? m : best), null),
+    [radarData]
+  );
 
   const passCount = state.attempts.filter((a) => a.status === "pass").length;
   const failCount = state.attempts.filter((a) => a.status === "fail").length;
@@ -268,7 +234,6 @@ export default function Overview() {
       .map(([site, count], i) => ({ site, count, pct: Math.round((count / max) * 100), color: palette[i % palette.length] }));
   }, [state.workers]);
 
-  const recent = state.attempts.slice(0, 6);
   const attemptsTrend = countTrend(state.attempts);
   const rateTrend = passRateTrend(state.attempts);
 
@@ -330,7 +295,7 @@ export default function Overview() {
                     <h2>{t("chart_passrate_title")}</h2>
                     <p>
                       {strongestModule
-                        ? `${strongestModule.name} leading at ${strongestModule.passRate}%`
+                        ? `${strongestModule.fullName} leading at ${strongestModule.Pass}%`
                         : t("chart_passrate_sub")}
                     </p>
                   </div>
@@ -630,56 +595,6 @@ export default function Overview() {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          <div className="panel">
-            <div className="panel-head">
-              <div className="panel-head-title">
-                <div className="panel-head-icon" style={{ background: ICON_OLIVE }}>
-                  <ClipboardList />
-                </div>
-                <div>
-                  <h2>{t("recent_activity")}</h2>
-                </div>
-              </div>
-            </div>
-            <div className="panel-body no-pad">
-              {state.status === "loading" ? (
-                <Loading />
-              ) : (
-                <div className="table-wrap">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>{t("col_worker")}</th>
-                        <th>{t("col_module")}</th>
-                        <th>{t("col_score")}</th>
-                        <th>{t("col_status")}</th>
-                        <th>{t("col_completed")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recent.map((a) => {
-                        const badge = statusToBadge(a.status, t);
-                        return (
-                          <tr key={a.id}>
-                            <td>{a.workerName}</td>
-                            <td>
-                              <ModuleTag moduleId={a.moduleId} moduleName={a.moduleName} /> {a.moduleName}
-                            </td>
-                            <td className="mono">{a.score}</td>
-                            <td>
-                              <Badge variant={badge.variant}>{badge.label}</Badge>
-                            </td>
-                            <td className="text-muted">{new Date(a.completedAt).toLocaleString()}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
             </div>
           </div>
         </div>

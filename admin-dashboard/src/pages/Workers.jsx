@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, UserPlus, ArrowRight, Users, MapPin } from "lucide-react";
+import { Search, UserPlus, ArrowRight, Users, MapPin, ClipboardList } from "lucide-react";
 import Layout from "../components/Layout.jsx";
 import { Loading, Empty, ErrorState, SampleDataBanner } from "../components/DataState.jsx";
-import Badge from "../components/Badge.jsx";
+import Badge, { statusToBadge } from "../components/Badge.jsx";
+import ModuleTag from "../components/ModuleTag.jsx";
 import AddWorkerModal from "../components/AddWorkerModal.jsx";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 import * as api from "../api/client.js";
@@ -88,10 +89,19 @@ export default function Workers() {
     return true;
   });
 
+  // Feeds the "Recent Attempts" panel that used to live on the Dashboard —
+  // same `attempts` fetch this page already makes for the training-progress
+  // bars above, just sorted and capped rather than a second network call.
+  const recentAttempts = useMemo(
+    () => [...attempts].sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt)).slice(0, 8),
+    [attempts]
+  );
+
   return (
     <Layout title={t("workers_title")} subtitle={`${state.status === "ready" ? state.data.length : "—"} registered workers`}>
       {state.source === "mock" && state.status === "ready" && <SampleDataBanner />}
 
+      <div className="two-col">
       <div className="panel">
         <div className="panel-head">
           <div className="panel-head-title">
@@ -203,6 +213,58 @@ export default function Workers() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="panel">
+        <div className="panel-head">
+          <div className="panel-head-title">
+            <div className="panel-head-icon" style={{ background: "#545748" }}>
+              <ClipboardList />
+            </div>
+            <div>
+              <h2>{t("recent_activity")}</h2>
+              <p>{t("workers_recent_attempts_sub")}</p>
+            </div>
+          </div>
+        </div>
+        <div className="panel-body no-pad">
+          {attempts.length === 0 ? (
+            <Loading rows={4} />
+          ) : (
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>{t("col_worker")}</th>
+                    <th>{t("col_module")}</th>
+                    <th>{t("col_score")}</th>
+                    <th>{t("col_status")}</th>
+                    <th>{t("col_completed")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentAttempts.map((a) => {
+                    const badge = statusToBadge(a.status, t);
+                    return (
+                      <tr key={a.id} onClick={() => navigate(`/workers/${a.workerId}`)}>
+                        <td>{a.workerName}</td>
+                        <td>
+                          <ModuleTag moduleId={a.moduleId} moduleName={a.moduleName} />
+                        </td>
+                        <td className="mono">{a.score}</td>
+                        <td>
+                          <Badge variant={badge.variant}>{badge.label}</Badge>
+                        </td>
+                        <td className="text-muted">{new Date(a.completedAt).toLocaleDateString()}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
       </div>
 
       {showAddModal && (

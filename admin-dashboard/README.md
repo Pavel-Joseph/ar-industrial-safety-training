@@ -86,6 +86,26 @@ npm run dev
 2. **Check the browser console**, not just the Vite terminal. Vite's terminal only reports *build* errors; a *runtime* crash appears only in the browser console (F12).
 3. **Confirm `npm install` actually completed** — `lucide-react` and `recharts` are both required. Run `npm ls recharts lucide-react`; if either is missing, re-run `npm install`.
 
+## 2c. Recent Attempts moved: Dashboard → Workers page
+
+The "Recent activity" table that used to sit at the bottom of the Dashboard has been removed from there and rebuilt on the **Workers page**, sitting alongside the worker list as two side-by-side panels (`.two-col`, the same layout pattern the Dashboard already uses for its two chart panels) — the worker list on the left, Recent Attempts on the right. On narrow screens the two stack vertically rather than breaking, same as everywhere else that layout is used.
+
+It reads from the same `attempts` fetch the Workers page already made for each worker's training-progress bar — no second network call — just sorted newest-first and capped at 8. No other page, and no colour or token file, was touched for this change.
+
+## 2d. Results page — card layout, not a table
+
+The Results page was rebuilt from a database-style table into a card dashboard (KPI strip + a grid of per-result cards), matching a reference design the team supplied. Nothing about the underlying data changed — it's still one card per attempt, same fields as the old table — only the presentation.
+
+- **No new colours were introduced.** Every colour on this page — the KPI icon circles, the readiness ring, the pass/fail card accent — comes from the same six-swatch Forest & Ember palette already in `tokens.css` (`--brand`, `--signal-go-strong`, `--signal-stop-strong`, etc.). Nothing in `tokens.css` or the page background was touched.
+- **Worker photo.** The reference design shows a worker photograph; this build uses a stylised circular hard-hat glyph with a pass/fail-coloured ring (`src/components/WorkerAvatar.jsx`) instead of a fabricated photo of a specific person. If you have real headshots once workers are registered through Person 2's backend, swap the icon in that one file for an `<img>` and every card picks it up automatically.
+- **KPI definitions**, computed from the same attempt data every other page uses:
+  - *Total Workers* — from `getSummary().workerCount`.
+  - *Overall Readiness* — the average score across every attempt (not a pass/fail rate — deliberately matches the reference's "Avg. Score" label).
+  - *Passed* — attempts that are both `status: "pass"` **and** `syncState: "synced"` (a passing result still waiting to sync isn't "completed successfully" yet).
+  - *Need Review* — everything else (failed, or passed-but-still-pending). Passed + Need Review always equals the total attempt count.
+- **Per-card "Modules" progress** is that worker's overall modules-passed count across *all* their attempts — not just the one this card represents — so it reads correctly even while a module/status filter is narrowing what's on screen.
+- A new reusable `RadialRing` component (`src/components/RadialRing.jsx`) draws every ring on this page — no new charting dependency added.
+
 ## 3. Project structure
 
 ```
@@ -100,7 +120,8 @@ src/
 │  └─ LanguageContext.jsx
 ├─ components/         ← Layout, Topbar, TopNav, Badge, StatCard, ModuleTag,
 │                         AddWorkerModal, AdminDetailsPanel, DataState,
-│                         ErrorBoundary, ProtectedRoute
+│                         ErrorBoundary, ProtectedRoute, RadialRing,
+│                         WorkerAvatar
 ├─ pages/
 │  ├─ Login.jsx
 │  ├─ Overview.jsx           → "/"              (nav label: "Dashboard")
@@ -248,6 +269,18 @@ The verification page and any certificate‑related copy uses the DGMS‑aligned
 
 **Day 3** (*"Results and worker-detail pages ready for real attempts"*) and **Day 4** (*"Sample QR opens the matching verification record"*) are also built: Results has module/status filters with pass/fail and sync badges; Certificates lists issued certificates with status filtering and now routes to the public `/verify/:code` page, which renders valid / revoked / not-found states. **So you are at Day 4, not Day 3.** Day 5 (swapping sample data for Person 2's live API) is the next one, and it's blocked on the backend existing.
 
+### Day 5 readiness — what's already done on this side
+
+Day 5 itself ("replace sample data with live APIs") can't be *finished* without Person 2's backend running, but everything on the dashboard's side that Day 5 depends on is already in place, verified this pass:
+
+- Every read (`getWorkers`, `getAttempts`, `getCertificates`, `getSummary`, `getModules`) tries the live API first via `isLiveModeConfigured()` and only falls back to sample data on failure — confirmed by re-reading `client.js` line by line.
+- The one write (`createWorker`) does **not** silently fall back — a failed live create surfaces a real error in the Add Worker modal instead of pretending to succeed.
+- Both dashboard charts and every KPI are computed from whatever `state.attempts` / `state.workers` / `state.modules` hold — they don't know or care whether that came from sample data or a live fetch, so nothing chart-specific needs to change when you connect the backend.
+- "Essential filters" (Day 5's own wording) are in place: Results filters by module and status, Workers filters by site/status/module plus search, Certificates filters by status.
+- Hindi/Santali label integration point is ready — `src/i18n/strings.js` has the `hi`/`sat` stub tables waiting on Person 4's reviewed text; keys already match `en` one-for-one.
+
+**In short: there is nothing left to build on the dashboard for Day 5 — only to point it at a real backend and confirm the contract in §4 matches.**
+
 **Day 2** deliverable was: *"Login and worker list with clear data states,"* built from *"login, summary cards, worker listing and worker details using contract-shaped sample data … loading, empty and error states."*
 
 | Day 2 task | Status |
@@ -257,6 +290,10 @@ The verification page and any certificate‑related copy uses the DGMS‑aligned
 | Worker listing | Done — searchable, filterable (Site/Status/Module) row-card list with a working "+ Add Worker" flow. |
 | Worker details | Done — score, module-by-module progress, certificate count, recent attempts. |
 | Loading / empty / error states | Done — `<Loading>`, `<Empty>`, `<ErrorState>` from `components/DataState.jsx`, used consistently on every data-bearing page. |
+
+### Fixed in this pass — Dashboard crashed to a blank page
+
+The Dashboard page (`src/pages/Overview.jsx` — this is the file the "Overview" nav item became "Dashboard" for) was throwing `ReferenceError: strongestModule is not defined` on every load, which is why the page rendered as the error-boundary screen. A previous edit that removed the old gauge chart accidentally deleted the calculation for `strongestModule` (the module currently leading in pass rate, used in the pass-rate chart's subtitle) while leaving the line that *displays* it. It's restored now — re-verified against the sample data: it correctly resolves to whichever module has the highest pass rate. No other file needed a change for this; the bug was isolated to that one component. The browser tab title (`index.html`) was also still reading the old pre-rename text ("...AR Safety Training Admin") and has been updated to match the in-app "Dashboard" naming.
 
 ### Fixed in this pass — Certificates page
 
