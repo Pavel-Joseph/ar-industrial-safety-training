@@ -8,7 +8,7 @@ Tracks translation keys across supported languages and documents the process for
 |---|---|---|---|
 | English | `en` | `localisation/en.json` | ✅ Complete (baseline) |
 | Hindi | `hi` | `localisation/hi.json` | ✅ Complete, visually checked in VS Code |
-| Santali | `sa` | `localisation/sa.json` | ⏳ Not started — script decision pending (see below) |
+| Santali | `sa` | `localisation/sa.json` | ⏳ Script decided, translations not started |
 
 ## Key naming convention
 
@@ -43,18 +43,15 @@ Keys are namespaced by section, using `section.key_name` in lowercase snake_case
 1. Add the key to `en.json` first (English is the source of truth).
 2. Add the same key to `hi.json` with the Hindi translation.
 3. Update this sheet's table with the new row.
-4. Leave the `sa` column as `—` until Santali is unblocked (see below).
+4. Leave the `sa` column as `—` until Santali translations are actually written (see below).
 5. Keep keys namespaced consistently — new module strings should use a new section prefix, e.g. `fire.*`, `gas.*`.
 
-## Santali — open decision
+## Santali — decision status
 
-Santali localisation (`sa.json`) is intentionally **not started**. Before any Santali strings are written, the team needs to decide:
+**Script: Latin-script transliteration** — decided due to project timeline. Ol Chiki would have required font/glyph rendering setup in Unity that hasn't been tested and there isn't time to validate now.
 
-- **Ol Chiki script** — Santali's dedicated script, native readability for Santali speakers.
-- **Latin-script transliteration** — may be more familiar to some readers depending on regional schooling/literacy, but is not the standard writing system for the language.
+**Important:** choosing transliteration does not remove the need for a Santali speaker. Safety-warning text still must be written/reviewed by someone who actually speaks Santali — not guessed or machine-translated — since incorrect phonetic spelling in a safety instruction is a real risk. `sa.json` work has **not started** and stays on hold until a reviewer is confirmed.
 
-This is a safety-training application, so Santali translations should be written or reviewed by a Santali speaker/language expert once the script decision is made — not machine-translated or guessed. Track the decision and reviewer here once confirmed:
-
-- Script chosen: _TBD_
-- Reviewer/translator: _TBD_
-- Target completion: _TBD (plan targets Day 2 initial strings, Day 5 full review)_
+- Script chosen: **Latin-script transliteration** ✅ (confirmed with team)
+- Reviewer/translator: _TBD — still needed_
+- Target completion: _TBD (plan originally targeted Day 2 initial strings, Day 5 full review — both now at risk without a reviewer)_
