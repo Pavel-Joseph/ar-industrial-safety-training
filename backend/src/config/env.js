@@ -42,7 +42,7 @@ const env = Object.freeze({
   databaseUrl:
     process.env.DATABASE_URL ||
     'postgresql://postgres:postgres@localhost:5432/ar_safety_training',
-  corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  corsOrigin: process.env.CORS_ORIGIN || 'https://ar-industrial-safety-training.vercel.app',
   publicBaseUrl: parsePublicBaseUrl(
     process.env.PUBLIC_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000',
   ),
