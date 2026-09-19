@@ -10,5 +10,16 @@
     "safety.wear_goggles": "Wear safety goggles",
     "training.complete": "Training Complete",
     "training.score": "Your Score",
-    "training.try_again": "Try Again"
+    "training.try_again": "Try Again",
+    "gas.title": "Gas Leak and Confined Space Protocol",
+    "gas.hazard_detected": "Gas hazard detected",
+    "gas.hazard_zone": "Hazard Zone",
+    "gas.do_not_enter": "Do not enter the hazard zone",
+    "gas.wear_ppe": "Wear the required PPE",
+    "gas.check_ppe": "Check your PPE before entering",
+    "gas.confined_space": "Confined Space",
+    "gas.buddy_system": "Follow the buddy system",
+    "gas.stay_with_buddy": "Stay with your buddy",
+    "gas.do_not_enter_alone": "Do not enter alone",
+    "gas.exit_area": "Exit the area safely"
 }
