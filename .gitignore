@@ -6,6 +6,7 @@
 /mobile-ar/[Uu]ser[Ss]ettings/
 /mobile-ar/.utmp/
 /mobile-ar/.vs/
+/mobile-ar/.vscode/
 
 # Build outputs
 /mobile-ar/[Bb]uild/
@@ -14,6 +15,8 @@
 /mobile-ar/[Rr]ecordings/
 /mobile-ar/*.apk
 /mobile-ar/*.aab
+/backend/data/
+/tmp/
 
 # Generated IDE project files
 /mobile-ar/*.csproj
