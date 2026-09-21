@@ -20,11 +20,7 @@ export default function Topbar({ title, subtitle }) {
     <header className="topbar">
       <div className="topbar-left">
         <div className="brand">
-          <div className="brand-mark">AR</div>
-          <div className="brand-text">
-            <strong>{t("appName")}</strong>
-            <span>{t("appTagline")}</span>
-          </div>
+          <img src="/images/johAR.png" alt="JohAR logo" className="brand-logo" />
         </div>
         <div
           className="page-heading"
