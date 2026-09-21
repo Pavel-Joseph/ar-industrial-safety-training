@@ -1,11 +1,10 @@
 import React from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Login from "./pages/Login.jsx";
 import Overview from "./pages/Overview.jsx";
 import Workers from "./pages/Workers.jsx";
 import WorkerDetail from "./pages/WorkerDetail.jsx";
-import Results from "./pages/Results.jsx";
 import Certificates from "./pages/Certificates.jsx";
 import About from "./pages/About.jsx";
 import VerifyCertificate from "./pages/VerifyCertificate.jsx";
@@ -43,14 +42,7 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/results"
-        element={
-          <ProtectedRoute>
-            <Results />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/results" element={<Navigate to="/workers" replace />} />
       <Route
         path="/certificates"
         element={

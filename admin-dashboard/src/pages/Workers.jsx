@@ -114,7 +114,7 @@ export default function Workers() {
   );
 
   return (
-    <Layout title={t("workers_title")} subtitle={`${state.status === "ready" ? state.data.length : "—"} registered workers`}>
+    <Layout title={t("workers_results_title")} subtitle={t("workers_results_sub")}>
       {state.source === "mock" && state.status === "ready" && <SampleDataBanner />}
       {relatedError && <ErrorState />}
 

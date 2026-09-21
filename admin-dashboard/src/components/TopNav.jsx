@@ -1,12 +1,11 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Users, ClipboardList, BadgeCheck, Info } from "lucide-react";
+import { LayoutDashboard, Users, BadgeCheck, Info } from "lucide-react";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 
 const NAV_ITEMS = [
   { to: "/", key: "nav_overview", Icon: LayoutDashboard, end: true },
-  { to: "/workers", key: "nav_workers", Icon: Users },
-  { to: "/results", key: "nav_results", Icon: ClipboardList },
+  { to: "/workers", key: "nav_workers_results", Icon: Users },
   { to: "/certificates", key: "nav_certificates", Icon: BadgeCheck },
   { to: "/about", key: "nav_about", Icon: Info }
 ];
