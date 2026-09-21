@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, UserPlus, ArrowRight, Users, MapPin, ClipboardList } from "lucide-react";
+import { Search, UserPlus, ArrowRight, Users, MapPin, ClipboardList, Flag, Calendar, Users2, CheckCircle2, AlertTriangle } from "lucide-react";
 import Layout from "../components/Layout.jsx";
 import { Loading, Empty, ErrorState, SampleDataBanner } from "../components/DataState.jsx";
 import Badge, { statusToBadge } from "../components/Badge.jsx";
 import ModuleTag from "../components/ModuleTag.jsx";
 import AddWorkerModal from "../components/AddWorkerModal.jsx";
+import RadialRing from "../components/RadialRing.jsx";
+import WorkerAvatar from "../components/WorkerAvatar.jsx";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 import * as api from "../api/client.js";
 
@@ -35,9 +37,12 @@ export default function Workers() {
   const [site, setSite] = useState("");
   const [status, setStatus] = useState("");
   const [moduleId, setModuleId] = useState("");
+  const [resultModuleId, setResultModuleId] = useState("");
+  const [resultStatus, setResultStatus] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
 
   const [state, setState] = useState({ status: "loading", data: [], source: "mock" });
+  const [resultsState, setResultsState] = useState({ status: "loading", source: "mock", modules: [], summary: null, allAttempts: [] });
   const [modules, setModules] = useState([]);
   const [attempts, setAttempts] = useState([]);
   const [relatedLoading, setRelatedLoading] = useState(true);
@@ -45,11 +50,18 @@ export default function Workers() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([api.getModules(), api.getAttempts()])
-      .then(([modulesRes, attemptsRes]) => {
+    Promise.all([api.getModules(), api.getAttempts(), api.getSummary()])
+      .then(([modulesRes, attemptsRes, summaryRes]) => {
         if (!cancelled) {
           setModules(modulesRes.data);
           setAttempts(attemptsRes.data);
+          setResultsState({
+            status: "ready",
+            source: attemptsRes.source,
+            modules: modulesRes.data,
+            summary: summaryRes.data,
+            allAttempts: attemptsRes.data
+          });
           setRelatedLoading(false);
         }
       })
@@ -112,6 +124,40 @@ export default function Workers() {
     () => [...attempts].sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt)).slice(0, 8),
     [attempts]
   );
+
+  const passedModulesByWorker = useMemo(() => {
+    const map = {};
+    resultsState.allAttempts
+      .filter((a) => a.status === "pass")
+      .forEach((a) => {
+        if (!map[a.workerId]) map[a.workerId] = new Set();
+        map[a.workerId].add(a.moduleId);
+      });
+    return map;
+  }, [resultsState.allAttempts]);
+
+  const filteredResults = useMemo(() => {
+    return resultsState.allAttempts
+      .filter((a) => (resultModuleId ? a.moduleId === resultModuleId : true))
+      .filter((a) => (resultStatus ? a.status === resultStatus : true))
+      .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+  }, [resultsState.allAttempts, resultModuleId, resultStatus]);
+
+  const totalModules = resultsState.modules.length || 1;
+  const avgScore = resultsState.allAttempts.length
+    ? Math.round(resultsState.allAttempts.reduce((sum, a) => sum + a.score, 0) / resultsState.allAttempts.length)
+    : 0;
+  const passedCount = resultsState.allAttempts.filter((a) => a.status === "pass" && a.syncState === "synced").length;
+  const needReviewCount = resultsState.allAttempts.length - passedCount;
+
+  const dateRangeLabel = useMemo(() => {
+    if (resultsState.allAttempts.length === 0) return null;
+    const dates = resultsState.allAttempts.map((a) => new Date(a.completedAt));
+    const min = new Date(Math.min(...dates));
+    const max = new Date(Math.max(...dates));
+    const fmt = (d) => d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    return `${fmt(min)} — ${fmt(max)}`;
+  }, [resultsState.allAttempts]);
 
   return (
     <Layout title={t("workers_results_title")} subtitle={t("workers_results_sub")}>
@@ -287,6 +333,191 @@ export default function Workers() {
         </div>
       </div>
       </div>
+
+      <div className="results-header" style={{ marginTop: 18 }}>
+        <div className="results-header-title">
+          <div className="results-header-icon">
+            <Flag />
+          </div>
+          <div>
+            <h1>{t("results_title")}</h1>
+            <p>{t("results_sub")}</p>
+          </div>
+        </div>
+        {dateRangeLabel && (
+          <span className="daterange-pill">
+            <Calendar />
+            {dateRangeLabel}
+          </span>
+        )}
+      </div>
+
+      {resultsState.status === "error" && <ErrorState />}
+
+      {resultsState.status !== "error" && (
+        <>
+          <div className="results-kpi-grid">
+            <div className="results-kpi-card">
+              <div className="results-kpi-icon" style={{ background: "var(--brand)", color: "var(--accent-contrast)" }}>
+                <Users />
+              </div>
+              <div>
+                <div className="n">{resultsState.status === "loading" ? "—" : resultsState.summary.workerCount}</div>
+                <div className="l">{t("results_kpi_workers")}</div>
+                <div className="s">{t("results_kpi_workers_sub")}</div>
+              </div>
+            </div>
+
+            <div className="results-kpi-card">
+              <RadialRing
+                value={avgScore}
+                size={56}
+                strokeWidth={5}
+                color="var(--signal-go-strong)"
+                label={resultsState.status === "loading" ? "—" : `${avgScore}%`}
+              />
+              <div>
+                <div className="l">{t("results_kpi_readiness")}</div>
+                <div className="s">{t("results_kpi_readiness_sub")}</div>
+              </div>
+            </div>
+
+            <div className="results-kpi-card">
+              <div className="results-kpi-icon" style={{ background: "var(--signal-go-strong)", color: "#fff" }}>
+                <CheckCircle2 />
+              </div>
+              <div>
+                <div className="n">{resultsState.status === "loading" ? "—" : passedCount}</div>
+                <div className="l">{t("results_kpi_passed")}</div>
+                <div className="s">{t("results_kpi_passed_sub")}</div>
+              </div>
+            </div>
+
+            <div className="results-kpi-card">
+              <div className="results-kpi-icon" style={{ background: "var(--signal-stop-strong)", color: "#fff" }}>
+                <AlertTriangle />
+              </div>
+              <div>
+                <div className="n">{resultsState.status === "loading" ? "—" : needReviewCount}</div>
+                <div className="l">{t("results_kpi_review")}</div>
+                <div className="s">{t("results_kpi_review_sub")}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="panel">
+            <div className="panel-body">
+              <div className="readiness-panel-head">
+                <span className="readiness-panel-title">
+                  <Users2 />
+                  {t("results_readiness_heading")}
+                </span>
+                <div className="filters">
+                  <select className="select" value={resultModuleId} onChange={(e) => setResultModuleId(e.target.value)}>
+                    <option value="">{t("filter_all_modules")}</option>
+                    {resultsState.modules.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                  <select className="select" value={resultStatus} onChange={(e) => setResultStatus(e.target.value)}>
+                    <option value="">{t("filter_all_status")}</option>
+                    <option value="pass">{t("status_pass")}</option>
+                    <option value="fail">{t("status_fail")}</option>
+                  </select>
+                </div>
+              </div>
+
+              {resultsState.status === "loading" && <Loading rows={5} />}
+              {resultsState.status === "ready" && filteredResults.length === 0 && (
+                <Empty title={t("empty_results")} body="" />
+              )}
+
+              {resultsState.status === "ready" && filteredResults.length > 0 && (
+                <div className="result-card-grid">
+                  {filteredResults.map((a) => {
+                    const isPass = a.status === "pass";
+                    const ringColor = isPass ? "var(--signal-go-strong)" : "var(--signal-stop-strong)";
+                    const passedSet = passedModulesByWorker[a.workerId] || new Set();
+                    const modulesPct = Math.round((passedSet.size / totalModules) * 100);
+
+                    return (
+                      <div
+                        key={a.id}
+                        className={`result-card ${isPass ? "is-pass" : "is-fail"}`}
+                        onClick={() => navigate(`/workers/${a.workerId}`)}
+                      >
+                        <div className="result-card-top">
+                          <div className="result-card-identity">
+                            <WorkerAvatar status={a.status} />
+                            <div>
+                              <strong>{a.workerName}</strong>
+                              <span>{a.workerCode}</span>
+                            </div>
+                          </div>
+                          <Badge variant={isPass ? "go" : "stop"}>
+                            {isPass ? t("status_pass") : t("status_fail")}
+                          </Badge>
+                        </div>
+
+                        <div className="result-card-module">
+                          <ModuleTag moduleId={a.moduleId} moduleName={a.moduleName} />
+                          {a.moduleName}
+                        </div>
+
+                        <div className="result-card-body">
+                          <div style={{ textAlign: "center" }}>
+                            <RadialRing value={a.score} size={64} strokeWidth={6} color={ringColor} />
+                            <div className="result-card-progress-head" style={{ justifyContent: "center", marginTop: 6 }}>
+                              <span>{t("results_score_label")}</span>
+                            </div>
+                          </div>
+                          <div className="result-card-progress">
+                            <div className="result-card-progress-head">
+                              <span>{t("results_modules_label")}</span>
+                              <span className="n">
+                                {passedSet.size}/{totalModules}
+                              </span>
+                            </div>
+                            <div className="progress-track">
+                              <div className="progress-fill" style={{ width: `${modulesPct}%`, background: ringColor }} />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="result-card-meta">
+                          <Calendar />
+                          {new Date(a.completedAt).toLocaleDateString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric"
+                          })}
+                          {", "}
+                          {new Date(a.completedAt).toLocaleTimeString(undefined, {
+                            hour: "numeric",
+                            minute: "2-digit"
+                          })}
+                        </div>
+
+                        <button
+                          className="result-card-cta"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/workers/${a.workerId}`);
+                          }}
+                        >
+                          {t("results_view_details")} <ArrowRight size={14} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {showAddModal && (
         <AddWorkerModal
