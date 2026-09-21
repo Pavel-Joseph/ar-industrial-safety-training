@@ -77,28 +77,35 @@ export default function VerifyCertificate() {
             </div>
 
             {state.cert ? (
-              <div className="kv-list">
-                <div className="kv-row">
-                  <span>{t("verify_field_worker")}</span>
-                  <span>{state.cert.workerName}</span>
+              <>
+                {state.cert.qrCodeUrl && (
+                  <div className="verify-qr-wrap">
+                    <img src={state.cert.qrCodeUrl} alt={`Verification QR for ${state.cert.certificateCode}`} className="verify-qr-image" />
+                  </div>
+                )}
+                <div className="kv-list">
+                  <div className="kv-row">
+                    <span>{t("verify_field_worker")}</span>
+                    <span>{state.cert.workerName}</span>
+                  </div>
+                  <div className="kv-row">
+                    <span>{t("verify_field_module")}</span>
+                    <span>{state.cert.moduleName}</span>
+                  </div>
+                  <div className="kv-row">
+                    <span>{t("verify_field_issued")}</span>
+                    <span>{new Date(state.cert.issuedAt).toLocaleDateString()}</span>
+                  </div>
+                  {state.cert.expiresAt && <div className="kv-row">
+                    <span>{t("verify_field_expires")}</span>
+                    <span>{new Date(state.cert.expiresAt).toLocaleDateString()}</span>
+                  </div>}
+                  <div className="kv-row">
+                    <span>{t("verify_field_id")}</span>
+                    <span className="mono">{state.cert.certificateCode}</span>
+                  </div>
                 </div>
-                <div className="kv-row">
-                  <span>{t("verify_field_module")}</span>
-                  <span>{state.cert.moduleName}</span>
-                </div>
-                <div className="kv-row">
-                  <span>{t("verify_field_issued")}</span>
-                  <span>{new Date(state.cert.issuedAt).toLocaleDateString()}</span>
-                </div>
-                {state.cert.expiresAt && <div className="kv-row">
-                  <span>{t("verify_field_expires")}</span>
-                  <span>{new Date(state.cert.expiresAt).toLocaleDateString()}</span>
-                </div>}
-                <div className="kv-row">
-                  <span>{t("verify_field_id")}</span>
-                  <span className="mono">{state.cert.certificateCode}</span>
-                </div>
-              </div>
+              </>
             ) : (
               <p className="text-muted" style={{ fontSize: 13 }}>
                 {t("verify_unknown_body")}

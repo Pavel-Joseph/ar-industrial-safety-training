@@ -32,6 +32,33 @@ test("Hindi and Santali translations are active for the dashboard", () => {
   assert.equal(hiOverview, satOverview);
 });
 
+test("certificate mappings expose verification and QR URLs", () => {
+  const certificate = mapCertificate({
+    id: "cert-1",
+    publicId: "public-1",
+    worker: { id: "worker-0", fullName: "Worker 0" },
+    module: { id: "mod_fire", name: "Fire Response" },
+    status: "valid",
+    issuedAt: "2026-09-18T00:00:00Z",
+    verificationUrl: "https://example.test/verify/public-1"
+  });
+
+  const verification = mapVerification({
+    publicId: "public-1",
+    status: "valid",
+    workerName: "Worker 0",
+    moduleName: "Fire Response",
+    issuedAt: "2026-09-18T00:00:00Z",
+    verificationUrl: "https://example.test/verify/public-1",
+    disclaimer: "Demo disclaimer"
+  });
+
+  assert.equal(certificate.verificationUrl, "https://example.test/verify/public-1");
+  assert.match(certificate.qrCodeUrl, /qrserver/i);
+  assert.equal(verification.verificationUrl, "https://example.test/verify/public-1");
+  assert.match(verification.qrCodeUrl, /qrserver/i);
+});
+
 test("hosted API login, pagination, result and certificate routes", async () => {
   const storage = new Map();
   globalThis.localStorage = {

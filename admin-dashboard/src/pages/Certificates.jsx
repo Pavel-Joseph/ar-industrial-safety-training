@@ -13,6 +13,7 @@ export default function Certificates() {
   const navigate = useNavigate();
   const [status, setStatus] = useState("");
   const [state, setState] = useState({ status: "loading", data: [], source: "mock" });
+  const [selectedQr, setSelectedQr] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -33,6 +34,26 @@ export default function Certificates() {
   return (
     <Layout title={t("certificates_title")} subtitle={t("certificates_sub")}>
       {state.source === "mock" && state.status === "ready" && <SampleDataBanner />}
+
+      {selectedQr && (
+        <div className="modal-overlay" onClick={() => setSelectedQr(null)}>
+          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-head">
+              <h3>{t("certificates_title")}</h3>
+              <button type="button" className="link-btn" onClick={() => setSelectedQr(null)} aria-label="Close QR preview">
+                Close
+              </button>
+            </div>
+            <div className="qr-preview-wrap">
+              <img src={selectedQr.qrCodeUrl} alt={`Verification QR for ${selectedQr.certificateCode}`} className="qr-preview-image" />
+            </div>
+            <p className="mono qr-preview-code">{selectedQr.certificateCode}</p>
+            <a href={selectedQr.verificationUrl} target="_blank" rel="noreferrer" className="btn btn-ghost qr-preview-link">
+              Open verification page
+            </a>
+          </div>
+        </div>
+      )}
 
       <div className="panel">
         <div className="panel-head">
@@ -84,9 +105,25 @@ export default function Certificates() {
                         </td>
                         <td className="text-muted">{new Date(c.issuedAt).toLocaleDateString()}</td>
                         <td>
-                          <span className="link-btn view-link">
-                            {t("certificates_verify_action")} <ExternalLink size={13} />
-                          </span>
+                          <div style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "flex-end" }}>
+                            <button
+                              type="button"
+                              className="link-btn view-link"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setSelectedQr(c);
+                              }}
+                            >
+                              <QrCode size={14} />
+                              {t("certificates_verify_action")}
+                            </button>
+                            <span className="link-btn view-link" onClick={(event) => {
+                              event.stopPropagation();
+                              navigate(`/verify/${c.certificateCode}`);
+                            }}>
+                              <ExternalLink size={13} />
+                            </span>
+                          </div>
                         </td>
                       </tr>
                     );

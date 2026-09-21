@@ -1,3 +1,11 @@
+const QR_SERVER_BASE = "https://api.qrserver.com/v1/create-qr-code/";
+
+function buildQrCodeUrl(verificationUrl) {
+  const url = verificationUrl || "https://example.test/verify/placeholder";
+  const encoded = encodeURIComponent(url);
+  return `${QR_SERVER_BASE}?data=${encoded}&size=220x220&charset-source=UTF-8&charset-target=UTF-8&ecc=L&color=0-0-0&bgcolor=255-255-255`;
+}
+
 // Translate the backend's nested response into the dashboard view model.
 export function mapWorker(worker) {
   return {
@@ -39,6 +47,7 @@ export function mapResult(result) {
 }
 
 export function mapCertificate(certificate) {
+  const verificationUrl = certificate.verificationUrl || `${typeof window !== "undefined" ? window.location.origin : "https://example.test"}/verify/${certificate.publicId}`;
   return {
     id: certificate.id,
     certificateCode: certificate.publicId,
@@ -50,11 +59,13 @@ export function mapCertificate(certificate) {
     status: certificate.status,
     issuedAt: certificate.issuedAt,
     expiresAt: certificate.expiresAt,
-    verificationUrl: certificate.verificationUrl
+    verificationUrl,
+    qrCodeUrl: buildQrCodeUrl(verificationUrl)
   };
 }
 
 export function mapVerification(verification) {
+  const verificationUrl = verification.verificationUrl || `${typeof window !== "undefined" ? window.location.origin : "https://example.test"}/verify/${verification.publicId}`;
   return {
     certificateCode: verification.publicId,
     status: verification.status,
@@ -62,7 +73,9 @@ export function mapVerification(verification) {
     moduleName: verification.moduleName,
     issuedAt: verification.issuedAt,
     expiresAt: verification.expiresAt,
-    disclaimer: verification.disclaimer
+    disclaimer: verification.disclaimer,
+    verificationUrl,
+    qrCodeUrl: buildQrCodeUrl(verificationUrl)
   };
 }
 

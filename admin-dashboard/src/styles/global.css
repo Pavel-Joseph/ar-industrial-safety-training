@@ -1227,6 +1227,57 @@ table.data-table {
   font-size: 19px;
 }
 
+.verify-qr-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 18px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+.verify-qr-image {
+  width: 180px;
+  height: 180px;
+  object-fit: contain;
+  display: block;
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px;
+}
+
+.qr-preview-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  margin-bottom: 12px;
+}
+
+.qr-preview-image {
+  width: 220px;
+  height: 220px;
+  object-fit: contain;
+  display: block;
+  background: #fff;
+  border-radius: 16px;
+  padding: 10px;
+}
+
+.qr-preview-code {
+  text-align: center;
+  margin: 0 0 12px;
+  font-size: 12.5px;
+}
+
+.qr-preview-link {
+  width: 100%;
+  justify-content: center;
+}
+
 .verify-title {
   font-family: var(--font-heading);
   font-size: 19px;
