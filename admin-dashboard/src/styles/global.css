@@ -251,6 +251,84 @@ button {
   height: 16px;
 }
 
+.certificate-lookup {
+  margin-bottom: 18px;
+}
+
+.certificate-lookup-head {
+  gap: 20px;
+  align-items: flex-end;
+}
+
+.certificate-lookup-head h3,
+.certificate-lookup-head p {
+  margin: 0;
+}
+
+.certificate-lookup-head p {
+  color: var(--text-muted);
+  font-size: 12.5px;
+  margin-top: 4px;
+}
+
+.certificate-lookup-form {
+  display: flex;
+  gap: 8px;
+  min-width: min(100%, 430px);
+}
+
+.certificate-lookup-form .input {
+  min-width: 0;
+  flex: 1;
+}
+
+.certificate-lookup-result {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  padding: 0 18px 18px;
+}
+
+.certificate-lookup-result > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lookup-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.certificate-lookup-message {
+  margin: 0;
+  padding: 0 18px 18px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.certificate-lookup-message.error {
+  color: var(--signal-stop);
+}
+
+@media (max-width: 760px) {
+  .certificate-lookup-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .certificate-lookup-form {
+    min-width: 0;
+  }
+
+  .certificate-lookup-result {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ---------- Overview layout: left KPI rail + main area ---------- */
 
 .overview-layout {

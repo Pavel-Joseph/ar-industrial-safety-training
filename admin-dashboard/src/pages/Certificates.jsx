@@ -14,6 +14,8 @@ export default function Certificates() {
   const [status, setStatus] = useState("");
   const [state, setState] = useState({ status: "loading", data: [], source: "mock" });
   const [selectedQr, setSelectedQr] = useState(null);
+  const [verificationId, setVerificationId] = useState("");
+  const [lookup, setLookup] = useState({ status: "idle", cert: null });
 
   useEffect(() => {
     let cancelled = false;
@@ -30,6 +32,23 @@ export default function Certificates() {
       cancelled = true;
     };
   }, [status]);
+
+  async function findCertificate(event) {
+    event.preventDefault();
+    const code = verificationId.trim();
+    if (!code) {
+      setLookup({ status: "not-found", cert: null });
+      return;
+    }
+
+    setLookup({ status: "loading", cert: null });
+    try {
+      const result = await api.verifyCertificate(code);
+      setLookup({ status: result.data ? "found" : "not-found", cert: result.data });
+    } catch {
+      setLookup({ status: "error", cert: null });
+    }
+  }
 
   return (
     <Layout title={t("certificates_title")} subtitle={t("certificates_sub")}>
@@ -54,6 +73,47 @@ export default function Certificates() {
           </div>
         </div>
       )}
+
+      <div className="certificate-lookup panel">
+        <div className="panel-head certificate-lookup-head">
+          <div>
+            <h3>{t("certificates_lookup_title")}</h3>
+            <p>{t("certificates_lookup_sub")}</p>
+          </div>
+          <form className="certificate-lookup-form" onSubmit={findCertificate}>
+            <input
+              className="input"
+              value={verificationId}
+              onChange={(event) => setVerificationId(event.target.value)}
+              placeholder={t("certificates_lookup_placeholder")}
+              aria-label={t("certificates_lookup_placeholder")}
+            />
+            <button type="submit" className="btn btn-primary" disabled={lookup.status === "loading"}>
+              {lookup.status === "loading" ? t("loading") : t("certificates_lookup_action")}
+            </button>
+          </form>
+        </div>
+        {lookup.status === "found" && lookup.cert && (
+          <div className="certificate-lookup-result">
+            <div>
+              <span className="lookup-label">{t("certificates_lookup_status")}</span>
+              <Badge variant={certStatusToBadge(lookup.cert.status, t).variant}>
+                {certStatusToBadge(lookup.cert.status, t).label}
+              </Badge>
+            </div>
+            <div>
+              <span className="lookup-label">{t("verify_field_issued")}</span>
+              <strong>{new Date(lookup.cert.issuedAt).toLocaleDateString()}</strong>
+            </div>
+            <div>
+              <span className="lookup-label">{t("verify_field_expires")}</span>
+              <strong>{lookup.cert.expiresAt ? new Date(lookup.cert.expiresAt).toLocaleDateString() : "—"}</strong>
+            </div>
+          </div>
+        )}
+        {lookup.status === "not-found" && <p className="certificate-lookup-message">{t("certificates_lookup_not_found")}</p>}
+        {lookup.status === "error" && <p className="certificate-lookup-message error">{t("error_generic_body")}</p>}
+      </div>
 
       <div className="panel">
         <div className="panel-head">
