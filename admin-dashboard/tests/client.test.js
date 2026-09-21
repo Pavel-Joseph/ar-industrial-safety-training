@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { mapWorker, mapModule, mapResult, mapCertificate, mapVerification, summarize } from "../src/api/mappers.js";
 import * as mockData from "../src/api/mockData.js";
+import { t } from "../src/i18n/strings.js";
 
 const API_URL = "https://ar-industrial-safety-api.onrender.com";
 
@@ -19,6 +20,17 @@ async function loadClient() {
     .replace("import.meta.env.VITE_API_BASE_URL", JSON.stringify(API_URL));
   return import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
 }
+
+test("Hindi and Santali translations are active for the dashboard", () => {
+  const englishOverview = t("en", "overview_title");
+  const hiOverview = t("hi", "overview_title");
+  const satOverview = t("sat", "overview_title");
+
+  assert.equal(englishOverview, "Dashboard");
+  assert.notEqual(hiOverview, englishOverview);
+  assert.notEqual(satOverview, englishOverview);
+  assert.equal(hiOverview, satOverview);
+});
 
 test("hosted API login, pagination, result and certificate routes", async () => {
   const storage = new Map();
