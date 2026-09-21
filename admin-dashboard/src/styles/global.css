@@ -71,9 +71,9 @@ button {
 
 .brand-logo {
   display: block;
-  height: 50px;
+  height: 62px;
   width: auto;
-  max-width: 220px;
+  max-width: 240px;
   object-fit: contain;
   filter: drop-shadow(0 4px 12px rgba(31, 41, 55, 0.08));
 }
@@ -1055,6 +1055,22 @@ table.data-table {
   border-radius: var(--radius-lg);
   padding: 32px;
   box-shadow: var(--shadow-raised);
+}
+
+.login-brand-form {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: -6px 0 18px;
+}
+
+.login-brand-logo {
+  display: block;
+  width: min(220px, 78%);
+  max-height: 80px;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.12));
 }
 
 .login-card h2 {

@@ -47,6 +47,9 @@ export default function Login() {
 
       <div className="login-form-side">
         <form className="login-card" onSubmit={handleSubmit}>
+          <div className="login-brand-form">
+            <img src="/images/johAR.png" alt="JohAR logo" className="login-brand-logo" />
+          </div>
           <h2>{t("login_title")}</h2>
           <p className="hint">{t("login_hint")}</p>
 
