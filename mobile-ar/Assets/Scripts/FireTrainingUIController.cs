@@ -204,10 +204,18 @@ public class FireTrainingUIController : MonoBehaviour
 
         Button start = ActionButton(root.transform, "Start Fire Training", Peach,
             new Vector2(60, -1200), new Vector2(960, 126));
-        start.onClick.AddListener(() => Show(View.Permission));
+        start.onClick.AddListener(() =>
+        {
+            if (!IntegrationRuntime.TrainingContextReady) { IntegrationRuntime.RequireSetup(); return; }
+            Show(View.Permission);
+        });
         Button gas = ActionButton(root.transform, "Start Gas Leak Training", Green,
             new Vector2(60, -1345), new Vector2(960, 126));
-        gas.onClick.AddListener(() => StartCoroutine(AcceptGasCamera()));
+        gas.onClick.AddListener(() =>
+        {
+            if (!IntegrationRuntime.TrainingContextReady) { IntegrationRuntime.RequireSetup(); return; }
+            StartCoroutine(AcceptGasCamera());
+        });
         Button last = OutlineButton(root.transform, "View Last Result",
             new Vector2(60, -1490), new Vector2(960, 105));
         last.onClick.AddListener(() => { resultOpened = true; Show(View.Result); PopulateResult(); });
@@ -428,8 +436,12 @@ public class FireTrainingUIController : MonoBehaviour
                 : gasSummary;
             return;
         }
-        resultTitle.text = "Fire Training Complete!";
-        resultScore.text = result.score + "\n<size=28><color=#9CA6A1>/ 100</color></size>";
+        QueuedAttempt queued = OfflineAttemptQueue.Load().Find(item => item.attemptId == result.attemptId);
+        bool hasServerScore = queued?.serverResult?.score != null;
+        float displayedScore = hasServerScore ? queued.serverResult.score.percentage : result.score;
+        resultTitle.text = hasServerScore ? "Server Evaluation Complete" : "Fire Training Complete!";
+        resultScore.text = displayedScore.ToString("0.#") +
+            "\n<size=28><color=#9CA6A1>/ 100 " + (hasServerScore ? "SERVER" : "PROVISIONAL") + "</color></size>";
         string attempt = string.IsNullOrEmpty(result.attemptId) ? "—" : "#" + result.attemptId.Substring(0, Mathf.Min(5, result.attemptId.Length)).ToUpperInvariant();
         resultDetails.text =
             "X   Incorrect selections                         <color=#FFFFFF>" + result.incorrectSelections + "</color>\n\n" +
@@ -437,7 +449,7 @@ public class FireTrainingUIController : MonoBehaviour
             "EXIT   Evacuation time                         <color=#FFFFFF>" + FormatTime(result.evacuationDurationSeconds) + "</color>\n\n" +
             "#   Attempt ID                                 <color=#FFFFFF>" + attempt + "</color>\n\n" +
             "SYNC   Sync status                             <color=#FFFFFF>" +
-            (result.syncState == "synced" ? "Synced" : "Pending") + "</color>" +
+            (queued?.state ?? "Pending") + "</color>" +
             (gasModule != null && !string.IsNullOrEmpty(gasModule.GetLatestResultSummary())
                 ? "\n\n" + gasModule.GetLatestResultSummary() : "");
     }

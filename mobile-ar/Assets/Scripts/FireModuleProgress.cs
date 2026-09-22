@@ -1,18 +1,13 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Text;
 using TMPro;
 using UnityEngine;
-using UnityEngine.Networking;
 using UnityEngine.UI;
 
 public class FireModuleProgress : MonoBehaviour
 {
     [SerializeField] private TMP_Text progressText;
     [SerializeField] private TMP_Text resultsText;
-    [SerializeField] private string apiBaseUrl = "";
-    [SerializeField] private string workerId = "demo-worker-001";
 
     private TapToPlace training;
     private EvacuationPractice evacuation;
@@ -29,7 +24,7 @@ public class FireModuleProgress : MonoBehaviour
     private readonly List<FireActionEvent> actions = new List<FireActionEvent>();
     private string attemptId;
     private float attemptStartedAt;
-    private bool syncing;
+    private DateTime attemptStartedUtc;
     private bool modernUI;
 
     private void Awake()
@@ -42,17 +37,13 @@ public class FireModuleProgress : MonoBehaviour
         modernUI = true;
     }
 
-    private void Start()
-    {
-        StartCoroutine(SyncPendingLoop());
-    }
-
     public void BeginAttempt(GameObject scenario)
     {
         observedScenario = scenario;
         savedForCurrentScenario = false;
-        attemptId = Guid.NewGuid().ToString("N");
+        attemptId = Guid.NewGuid().ToString();
         attemptStartedAt = Time.unscaledTime;
+        attemptStartedUtc = DateTime.UtcNow;
         actions.Clear();
         RecordAction("scenario_placed", true);
     }
@@ -114,13 +105,16 @@ public class FireModuleProgress : MonoBehaviour
             {
                 int mistakes = actions.FindAll(action => !action.correct).Count;
                 int score = Mathf.Max(0, 100 - mistakes * 10);
+                DateTime completedUtc = DateTime.UtcNow;
+                WorkerRecord selectedWorker = WorkerSelector.Instance?.SelectedWorker;
+                ModuleRecord fireModule = WorkerSelector.Instance?.Module("fire-response");
                 FireModuleResult result = new FireModuleResult
                 {
                     attemptId = attemptId,
-                    workerId = workerId,
+                    workerId = selectedWorker?.id,
                     moduleId = "fire-response",
-                    scoringVersion = "fire-v1",
-                    completedAtUtc = DateTime.UtcNow.ToString("o"),
+                    scoringVersion = fireModule != null ? fireModule.scoringVersion.ToString() : "",
+                    completedAtUtc = completedUtc.ToString("O"),
                     totalDurationSeconds = Time.unscaledTime - attemptStartedAt,
                     score = score,
                     passed = score >= 70,
@@ -133,6 +127,9 @@ public class FireModuleProgress : MonoBehaviour
                     events = actions.ToArray()
                 };
                 FireModuleResultStorage.Save(result);
+                AttemptPayload payload = AttemptActionMapper.Fire(attemptId, attemptStartedUtc,
+                    completedUtc, actions);
+                AttemptSyncManager.Instance?.Queue(payload, score);
                 savedForCurrentScenario = true;
                 if (!modernUI && resultsText != null)
                     resultsText.gameObject.SetActive(false);
@@ -190,67 +187,24 @@ public class FireModuleProgress : MonoBehaviour
         {
             resultsText.text =
                 "FIRE TRAINING COMPLETE\n" +
-                $"Score: {result.score}/100  |  {(result.passed ? "PASS" : "RETRY")}\n" +
+                $"Provisional local score: {result.score}/100  |  {(result.passed ? "PASS" : "RETRY")}\n" +
                 $"Mistakes: {result.incorrectSelections}\n" +
                 $"Total time: {result.totalDurationSeconds:F1}s\n" +
                 $"Evacuation: {result.evacuationDurationSeconds:F1}s\n" +
-                $"Sync: {(result.syncState == "synced" ? "accepted by server" : "pending upload")}\n" +
+                $"Sync: {BackendSyncLabel(result.attemptId)}\n" +
                 $"Attempt: {result.attemptId.Substring(0, 8)}";
         }
 
         resultsText.gameObject.SetActive(true);
     }
 
-    private IEnumerator SyncPendingLoop()
+    private static string BackendSyncLabel(string id)
     {
-        while (true)
-        {
-            if (!syncing && !string.IsNullOrWhiteSpace(apiBaseUrl))
-                yield return SyncPending();
-            yield return new WaitForSecondsRealtime(20f);
-        }
-    }
-
-    private IEnumerator SyncPending()
-    {
-        syncing = true;
-        foreach (FireModuleResult result in FireModuleResultStorage.Pending())
-        {
-            string url = apiBaseUrl.TrimEnd('/') + "/api/attempts";
-            byte[] body = Encoding.UTF8.GetBytes(JsonUtility.ToJson(result));
-            using (UnityWebRequest request = new UnityWebRequest(url, "POST"))
-            {
-                request.uploadHandler = new UploadHandlerRaw(body);
-                request.downloadHandler = new DownloadHandlerBuffer();
-                request.SetRequestHeader("Content-Type", "application/json");
-                request.timeout = 8;
-                yield return request.SendWebRequest();
-                if (request.result != UnityWebRequest.Result.Success)
-                    break;
-
-                FireSyncAcknowledgement ack = null;
-                try { ack = JsonUtility.FromJson<FireSyncAcknowledgement>(request.downloadHandler.text); }
-                catch (ArgumentException) { }
-                if (ack == null || !ack.accepted || ack.attemptId != result.attemptId)
-                    break;
-                FireModuleResultStorage.MarkSynced(result.attemptId);
-                FireModuleResult latest = FireModuleResultStorage.LoadLatest();
-                if (latest != null && latest.attemptId == result.attemptId &&
-                    resultsText != null && resultsText.gameObject.activeSelf)
-                {
-                    resultsText.gameObject.SetActive(false);
-                    ViewSavedRun();
-                }
-            }
-        }
-        syncing = false;
-    }
-
-    [Serializable]
-    private class FireSyncAcknowledgement
-    {
-        public string attemptId;
-        public bool accepted;
+        QueuedAttempt item = OfflineAttemptQueue.Load().Find(entry => entry.attemptId == id);
+        if (item?.serverResult?.score != null)
+            return "server " + item.serverResult.score.percentage.ToString("0.#") + "/100 " +
+                (item.serverResult.score.passed ? "PASS" : "RETRY");
+        return item?.state ?? "pending";
     }
 
     private void StyleInterface()

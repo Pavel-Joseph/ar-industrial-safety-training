@@ -87,6 +87,14 @@ public class GasLeakModuleController : MonoBehaviour
     private bool leakIsolated;
     private bool ventilationActive;
     private float nextAlarmAt;
+    private string backendAttemptId;
+    private DateTime backendStartedUtc;
+    private string hazardSelection;
+    private string ppeSelection;
+    private string buddySelection;
+    private DateTime hazardOccurredUtc;
+    private DateTime ppeOccurredUtc;
+    private DateTime buddyOccurredUtc;
     private readonly List<RaycastResult> uiHits = new();
     private static readonly List<ARRaycastHit> arHits = new();
 
@@ -180,20 +188,44 @@ public class GasLeakModuleController : MonoBehaviour
                 if (MatchesTarget(leakTarget, position, 0.34f) ||
                     MatchesTarget(hazardTarget, position, 0.34f))
                 {
+                    if (string.IsNullOrEmpty(hazardSelection))
+                    {
+                        hazardSelection = "outside-hazard-zone";
+                        hazardOccurredUtc = DateTime.UtcNow;
+                    }
                     step = Step.Ppe;
                     UpdateCopy();
                 }
                 else
+                {
+                    if (string.IsNullOrEmpty(hazardSelection))
+                    {
+                        hazardSelection = "inside-hazard-zone";
+                        hazardOccurredUtc = DateTime.UtcNow;
+                    }
                     RecordWrong("Tap the yellow gas cloud at the leaking pipe.");
+                }
                 break;
             case Step.Buddy:
                 if (MatchesTarget(buddyTarget, position, 0.34f))
                 {
+                    if (string.IsNullOrEmpty(buddySelection))
+                    {
+                        buddySelection = "buddy-confirmed";
+                        buddyOccurredUtc = DateTime.UtcNow;
+                    }
                     step = Step.Shutoff;
                     UpdateCopy();
                 }
                 else
+                {
+                    if (string.IsNullOrEmpty(buddySelection))
+                    {
+                        buddySelection = "buddy-not-confirmed";
+                        buddyOccurredUtc = DateTime.UtcNow;
+                    }
                     RecordWrong("Locate and tap your buddy before entering the hazard area.");
+                }
                 break;
             case Step.Shutoff:
                 if (MatchesTarget(shutoffTarget, position, 0.35f))
@@ -254,6 +286,9 @@ public class GasLeakModuleController : MonoBehaviour
         scenario = new GameObject("GasLeakScenario");
         scenario.transform.SetPositionAndRotation(position,
             Quaternion.LookRotation(forward, Vector3.up));
+        backendAttemptId = Guid.NewGuid().ToString();
+        backendStartedUtc = DateTime.UtcNow;
+        hazardSelection = ppeSelection = buddySelection = null;
         BuildGasScene();
         hazardStartedAt = Time.unscaledTime;
         step = Step.Hazard;
@@ -851,6 +886,11 @@ public class GasLeakModuleController : MonoBehaviour
                 break;
             default:
                 button.GetComponent<Image>().color = new Color(0.72f, 0.12f, 0.12f, 1f);
+                if (string.IsNullOrEmpty(ppeSelection))
+                {
+                    ppeSelection = item == "medical" ? "medical-mask" : "garden-gloves";
+                    ppeOccurredUtc = DateTime.UtcNow;
+                }
                 RecordWrong(item == "medical"
                     ? "A medical mask does not protect against toxic industrial gas."
                     : "Garden gloves do not provide chemical protection.");
@@ -862,6 +902,11 @@ public class GasLeakModuleController : MonoBehaviour
         button.GetComponent<Image>().color = Green;
         if (ppeSelected >= 3)
         {
+            if (string.IsNullOrEmpty(ppeSelection))
+            {
+                ppeSelection = "approved-ppe";
+                ppeOccurredUtc = DateTime.UtcNow;
+            }
             step = Step.Buddy;
             buddyTarget.gameObject.SetActive(true);
             UpdateCopy();
@@ -880,20 +925,26 @@ public class GasLeakModuleController : MonoBehaviour
     {
         step = Step.Result;
         int score = Mathf.Max(0, 100 - incorrect * 10);
+        DateTime completedUtc = DateTime.UtcNow;
         GasResult result = new GasResult
         {
             score = score,
             incorrectSelections = incorrect,
             durationSeconds = Time.unscaledTime - startedAt,
-            attemptId = Guid.NewGuid().ToString("N").Substring(0, 8).ToUpperInvariant(),
-            completedUtc = DateTime.UtcNow.ToString("O")
+            attemptId = backendAttemptId,
+            completedUtc = completedUtc.ToString("O")
         };
         PlayerPrefs.SetString("gas_training_latest", JsonUtility.ToJson(result));
         PlayerPrefs.Save();
+        AttemptPayload backendPayload = AttemptActionMapper.Gas(backendAttemptId, backendStartedUtc,
+            completedUtc, hazardSelection ?? "hazard-not-recognised", hazardOccurredUtc,
+            ppeSelection ?? "ppe-not-selected", ppeOccurredUtc,
+            buddySelection ?? "buddy-not-confirmed", buddyOccurredUtc);
+        AttemptSyncManager.Instance?.Queue(backendPayload, score);
         UpdateCopy();
-        scoreText.text = (score >= 70 ? "PASS" : "RETRY") + "  " + score + "/100\n" +
+        scoreText.text = "PROVISIONAL  " + (score >= 70 ? "PASS" : "RETRY") + "  " + score + "/100\n" +
             "Mistakes: " + incorrect + "    Time: " + result.durationSeconds.ToString("F1") + "s\n" +
-            "Attempt: #" + result.attemptId;
+            "Pending backend evaluation\nAttempt: #" + result.attemptId.Substring(0, 8);
     }
 
     private void UpdateCopy()
@@ -1033,6 +1084,9 @@ public class GasLeakModuleController : MonoBehaviour
         ventilationActive = false;
         hazardScale = 0.55f;
         nextAlarmAt = 0f;
+        backendAttemptId = null;
+        hazardSelection = ppeSelection = buddySelection = null;
+        hazardOccurredUtc = ppeOccurredUtc = buddyOccurredUtc = default;
         if (respiratorButton != null)
         {
             ResetPpeButton(respiratorButton);
