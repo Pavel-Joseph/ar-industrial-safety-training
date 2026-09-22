@@ -1,6 +1,9 @@
 // The dashboard's sole HTTP boundary. A configured API never falls back to
 // sample records on failure, so live errors cannot masquerade as real data.
-import { getMockModules, getMockWorkers, addMockWorker, getMockAttempts, getMockCertificates } from "./mockData.js";
+import {
+  getMockModules, getMockWorkers, addMockWorker, getMockAttempts, getMockCertificates,
+  issueMockCertificate, revokeMockCertificate
+} from "./mockData.js";
 import { mapWorker, mapModule, mapResult, mapCertificate, mapVerification, summarize } from "./mappers.js";
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
@@ -207,6 +210,30 @@ export async function getCertificates({ workerId, moduleId, status } = {}) {
     workerName: workers[c.workerId]?.name ?? "Unknown",
     moduleName: modules[c.moduleId]?.name ?? "Unknown module"
   })), source: "mock" };
+}
+
+export async function issueCertificate(attemptId, expiresAt) {
+  if (live()) {
+    const response = await request("/api/certificates", {
+      method: "POST",
+      body: { attemptId, expiresAt }
+    });
+    return { data: mapCertificate(response.data), source: "live" };
+  }
+  await delay();
+  return { data: issueMockCertificate(attemptId, expiresAt), source: "mock" };
+}
+
+export async function revokeCertificate(certificateId, reason) {
+  if (live()) {
+    const response = await request(`/api/certificates/${encodeURIComponent(certificateId)}/status`, {
+      method: "PATCH",
+      body: { status: "revoked", reason }
+    });
+    return { data: mapCertificate(response.data), source: "live" };
+  }
+  await delay();
+  return { data: revokeMockCertificate(certificateId, reason), source: "mock" };
 }
 
 // Public verification does not require an admin session.

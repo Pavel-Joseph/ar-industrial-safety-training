@@ -27,6 +27,8 @@ test("Hindi and Santali translations are active for the dashboard", () => {
   const satOverview = t("sat", "overview_title");
 
   assert.equal(englishOverview, "Dashboard");
+  assert.equal(t("en", "workers_results_title"), "Workers and Results");
+  assert.equal(t("en", "workers_results_sub"), "Manage workers and view results");
   assert.notEqual(hiOverview, englishOverview);
   assert.notEqual(satOverview, englishOverview);
   assert.equal(hiOverview, satOverview);
@@ -107,11 +109,30 @@ test("hosted API login, pagination, result and certificate routes", async () => 
       module: { id: "fire-response", name: "Fire Response", scoringVersion: "v1" },
       score: { percentage: 85, passed: true }, completedAt: "2026-09-18T00:00:00Z"
     }], meta: { total: 1, limit: 100, offset: 0 } });
+    if (parsed.pathname === "/api/certificates" && options.method === "POST") {
+      assert.deepEqual(JSON.parse(options.body), {
+        attemptId: "attempt-1", expiresAt: "2027-09-18T23:59:59.999Z"
+      });
+      return json({ data: {
+        id: "cert-2", publicId: "public-2", attemptId: "attempt-1", status: "valid",
+        worker: { id: "worker-0", fullName: "Worker 0" },
+        module: { id: "fire-response", name: "Fire Response" }
+      } }, 201);
+    }
     if (parsed.pathname === "/api/certificates") return json({ data: [{
       id: "cert-1", publicId: "public-1", attemptId: "attempt-1", status: "valid",
       worker: { id: "worker-0", fullName: "Worker 0" },
       module: { id: "fire-response", name: "Fire Response" }
     }], meta: { total: 1, limit: 100, offset: 0 } });
+    if (parsed.pathname === "/api/certificates/cert-1/status") {
+      assert.equal(options.method, "PATCH");
+      assert.deepEqual(JSON.parse(options.body), { status: "revoked", reason: "Issued in error" });
+      return json({ data: {
+        id: "cert-1", publicId: "public-1", attemptId: "attempt-1", status: "revoked",
+        worker: { id: "worker-0", fullName: "Worker 0" },
+        module: { id: "fire-response", name: "Fire Response" }
+      } });
+    }
     if (parsed.pathname === "/api/verify/public-1") {
       assert.equal(options.headers.Authorization, undefined);
       return json({ data: { publicId: "public-1", status: "valid", workerName: "Worker 0", moduleName: "Fire Response" } });
@@ -131,6 +152,8 @@ test("hosted API login, pagination, result and certificate routes", async () => 
   assert.equal((await client.getAttempts({ status: "pass" })).data[0].score, 85);
   assert.equal(calls.find((call) => call.path === "/api/results").query.get("passed"), "true");
   assert.equal((await client.getCertificates()).data[0].certificateCode, "public-1");
+  assert.equal((await client.issueCertificate("attempt-1", "2027-09-18T23:59:59.999Z")).data.status, "valid");
+  assert.equal((await client.revokeCertificate("cert-1", "Issued in error")).data.status, "revoked");
   assert.equal((await client.createWorker({ name: "New Worker", workerCode: "JH-222", language: "sat" })).data.workerCode, "JH-222");
   const detail = await client.getWorker("worker-0");
   assert.equal(detail.data.attempts.length, 1);

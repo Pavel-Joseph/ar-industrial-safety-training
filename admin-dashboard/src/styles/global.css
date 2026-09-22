@@ -813,6 +813,49 @@ table.data-table {
   background: var(--surface-raised);
 }
 
+.btn-danger {
+  background: var(--signal-stop-strong);
+  color: #fff;
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.certificate-eligible-panel {
+  margin-bottom: 18px;
+}
+
+.certificate-action-message {
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.certificate-action-message.success {
+  background: var(--signal-go-dim);
+  color: var(--signal-go);
+}
+
+.certificate-action-message.error {
+  background: var(--signal-stop-dim);
+  color: var(--signal-stop);
+}
+
+.certificate-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.danger-link {
+  color: var(--signal-stop);
+}
+
 /* ---------- Data states ---------- */
 
 .data-state {

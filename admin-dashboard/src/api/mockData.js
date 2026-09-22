@@ -93,3 +93,31 @@ export function getMockAttempts() {
 export function getMockCertificates() {
   return certificates.map((c) => ({ ...c }));
 }
+
+export function issueMockCertificate(attemptId, expiresAt) {
+  const existing = certificates.find((certificate) => certificate.attemptId === attemptId);
+  if (existing) return { ...existing };
+  const attempt = attempts.find((item) => item.id === attemptId && item.status === "pass");
+  if (!attempt) throw new Error("Only a passing attempt can receive a certificate");
+  const certificate = {
+    id: `cert_${Date.now()}`,
+    certificateCode: crypto.randomUUID(),
+    workerId: attempt.workerId,
+    moduleId: attempt.moduleId,
+    attemptId,
+    status: "valid",
+    issuedAt: new Date().toISOString(),
+    expiresAt
+  };
+  certificates = [certificate, ...certificates];
+  return { ...certificate };
+}
+
+export function revokeMockCertificate(certificateId, reason) {
+  const certificate = certificates.find((item) => item.id === certificateId);
+  if (!certificate) throw new Error("Certificate was not found");
+  certificate.status = "revoked";
+  certificate.revocationReason = reason;
+  certificate.revokedAt = new Date().toISOString();
+  return { ...certificate };
+}
