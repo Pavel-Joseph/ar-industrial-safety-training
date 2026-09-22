@@ -14,7 +14,9 @@ npm run dev
 
 Open **http://localhost:5173**. Sign in using the deployed backend's `DEMO_ADMIN_EMAIL` and `DEMO_ADMIN_PASSWORD` values. The sample account (`admin@site.local` / `admin123`) only works when `VITE_API_BASE_URL` is unset. Restart Vite after changing `.env.local`.
 
-The Render backend's `CORS_ORIGIN` is currently `http://localhost:5173`. Vite is configured to use exactly that port. If you deploy the dashboard at another origin, change `CORS_ORIGIN` in the Render service/Blueprint to the dashboard's exact HTTPS origin, then redeploy the backend. Browser CORS applies to dashboard requests even when the API URL works in Postman.
+The Render backend's production `CORS_ORIGIN` is `https://ar-industrial-safety-training.vercel.app`. If the dashboard origin changes, update `CORS_ORIGIN` in the Render service/Blueprint and redeploy the backend. Browser CORS applies to dashboard requests even when the API URL works in Postman. For local dashboard development, temporarily allow `http://localhost:5173` in the backend configuration.
+
+For production, `PUBLIC_BASE_URL` on Render must also be the dashboard origin. It makes generated certificate QR codes point to the public dashboard route, such as `https://ar-industrial-safety-training.vercel.app/verify/<public-id>`. `vercel.json` rewrites direct verification links to the React app, so scans and fresh browser tabs work without signing in.
 
 The URL in `VITE_API_BASE_URL` is public and bundled into client JavaScript; never put passwords, JWTs, or database URLs in a `VITE_` variable. Admin JWTs are obtained through login. HTTPS is required for a hosted dashboard and API.
 

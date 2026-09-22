@@ -22,3 +22,5 @@ services:
         sync: false
       - key: CORS_ORIGIN
         value: https://ar-industrial-safety-training.vercel.app
+      - key: PUBLIC_BASE_URL
+        value: https://ar-industrial-safety-training.vercel.app
