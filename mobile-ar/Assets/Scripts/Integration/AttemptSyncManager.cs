@@ -21,7 +21,9 @@ public sealed class AttemptSyncManager : MonoBehaviour
 
     public int PendingCount()
     {
-        return OfflineAttemptQueue.Load().FindAll(item => item.state == "pending").Count;
+        string workerId = WorkerSelector.Instance?.SelectedWorker?.id;
+        return OfflineAttemptQueue.Load().FindAll(item => item.state == "pending" &&
+            (string.IsNullOrEmpty(workerId) || PayloadWorkerId(item) == workerId)).Count;
     }
 
     public void Queue(AttemptPayload payload, int provisionalScore)
@@ -64,6 +66,7 @@ public sealed class AttemptSyncManager : MonoBehaviour
         foreach (QueuedAttempt item in items)
         {
             if (item.state != "pending") continue;
+            if (PayloadWorkerId(item) != WorkerSelector.Instance?.SelectedWorker?.id) continue;
             ApiResult result = null;
             yield return ApiClient.Send("POST", "/api/attempts/sync", item.payloadJson,
                 AuthManager.Instance.AccessToken, value => result = value);
@@ -113,6 +116,7 @@ public sealed class AttemptSyncManager : MonoBehaviour
     {
         if (statusCode == 400 || statusCode == 422) return "rejected";
         if (statusCode == 404) return "needs-correction";
+        if (statusCode == 403) return "forbidden";
         if (statusCode == 409 && (errorMessage ?? "").Contains("ATTEMPT_ID_CONFLICT")) return "conflict";
         if (statusCode == 409 && (errorMessage ?? "").Contains("VERSION_MISMATCH")) return "version-mismatch";
         return "pending";
@@ -123,5 +127,12 @@ public sealed class AttemptSyncManager : MonoBehaviour
     {
         return (syncStatus == "accepted" || syncStatus == "already-accepted") &&
             !string.IsNullOrEmpty(expectedAttemptId) && expectedAttemptId == responseAttemptId;
+    }
+
+    public static string PayloadWorkerId(QueuedAttempt item)
+    {
+        if (item == null || string.IsNullOrEmpty(item.payloadJson)) return null;
+        try { return JsonUtility.FromJson<AttemptPayload>(item.payloadJson)?.workerId; }
+        catch (ArgumentException) { return null; }
     }
 }

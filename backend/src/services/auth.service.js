@@ -33,4 +33,30 @@ async function login({ email, password }) {
   };
 }
 
-module.exports = { login };
+async function workerLogin({ employeeCode, pin }) {
+  const result = await query(
+    `SELECT id, employee_code, full_name, preferred_language, active, pin_hash
+       FROM workers
+      WHERE employee_code = $1`,
+    [employeeCode],
+  );
+  const worker = result.rows[0];
+  if (!worker || !worker.active || !worker.pin_hash || !(await verifyPassword(pin, worker.pin_hash))) {
+    throw new AppError(401, 'INVALID_WORKER_CREDENTIALS', 'Employee code or PIN is incorrect');
+  }
+  const identity = { id: worker.id, employeeCode: worker.employee_code, role: 'worker' };
+  return {
+    accessToken: signAccessToken(identity),
+    tokenType: 'Bearer',
+    expiresIn: env.jwtExpiresInSeconds,
+    worker: {
+      id: worker.id,
+      employeeCode: worker.employee_code,
+      fullName: worker.full_name,
+      preferredLanguage: worker.preferred_language,
+      active: worker.active,
+    },
+  };
+}
+
+module.exports = { login, workerLogin };

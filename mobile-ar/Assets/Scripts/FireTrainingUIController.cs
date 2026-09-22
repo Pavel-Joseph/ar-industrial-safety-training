@@ -12,7 +12,8 @@ using UnityEngine.UI;
 [DefaultExecutionOrder(100)]
 public class FireTrainingUIController : MonoBehaviour
 {
-    private enum View { Home, Permission, Placement, Training, Extinguished, Result, Help }
+    private enum View { Login, Home, Permission, Placement, Training, Extinguished, Result, Help }
+    private static FireTrainingUIController instance;
 
     private static readonly Color Ink = Hex("071814");
     private static readonly Color CameraTint = new Color(0.025f, 0.18f, 0.14f, 0.42f);
@@ -31,6 +32,7 @@ public class FireTrainingUIController : MonoBehaviour
     private GasLeakModuleController gasModule;
     private GameObject uiRoot;
     private GameObject homeView;
+    private GameObject loginView;
     private GameObject permissionView;
     private GameObject placementView;
     private GameObject trainingView;
@@ -49,6 +51,11 @@ public class FireTrainingUIController : MonoBehaviour
     private TMP_Text resultTitle;
     private TMP_Text resultScore;
     private TMP_Text resultDetails;
+    private TMP_InputField employeeCodeInput;
+    private TMP_InputField pinInput;
+    private TMP_Text loginStatus;
+    private TMP_Text workerSummary;
+    private TMP_Text attemptSummary;
     private View currentView;
     private View helpReturnView;
     private bool started;
@@ -58,6 +65,7 @@ public class FireTrainingUIController : MonoBehaviour
 
     private void Start()
     {
+        instance = this;
         training = GetComponent<TapToPlace>();
         evacuation = GetComponent<EvacuationPractice>();
         canvas = FindFirstObjectByType<Canvas>();
@@ -83,13 +91,16 @@ public class FireTrainingUIController : MonoBehaviour
 
         HideLegacyInterface();
         BuildInterface();
-        Show(View.Home);
+        Show(AuthManager.Instance != null && AuthManager.Instance.IsAuthenticated ? View.Home : View.Login);
     }
 
     private void Update()
     {
+        if (currentView == View.Home && (AuthManager.Instance == null || !AuthManager.Instance.IsAuthenticated))
+        { Show(View.Login); return; }
+        if (currentView == View.Home) RefreshWorkerDashboard();
         if (!started || currentView == View.Home || currentView == View.Permission ||
-            currentView == View.Help || currentView == View.Result)
+            currentView == View.Login || currentView == View.Help || currentView == View.Result)
             return;
 
         if (!training.HasPlacedScenario)
@@ -163,6 +174,7 @@ public class FireTrainingUIController : MonoBehaviour
         uiRoot = Node("FigmaFireUI", canvas.transform);
         Stretch(uiRoot.GetComponent<RectTransform>());
 
+        loginView = BuildLogin();
         homeView = BuildHome();
         permissionView = BuildPermission();
         placementView = BuildPlacement();
@@ -170,6 +182,51 @@ public class FireTrainingUIController : MonoBehaviour
         extinguishedView = BuildExtinguished();
         resultView = BuildResult();
         helpView = BuildHelp();
+    }
+
+    public static void ShowWorkerLogin(string message = null)
+    {
+        if (instance == null) return;
+        if (!string.IsNullOrEmpty(message) && instance.loginStatus != null)
+            instance.loginStatus.text = message;
+        instance.Show(View.Login);
+    }
+
+    private GameObject BuildLogin()
+    {
+        GameObject root = Screen("Worker Login", true);
+        Label(root.transform, "AR Safety", 44, FontStyles.Bold,
+            new Vector2(72, -150), new Vector2(700, 70), TextAlignmentOptions.Left);
+        Label(root.transform, "Worker Sign In", 68, FontStyles.Bold,
+            new Vector2(90, -390), new Vector2(900, 100), TextAlignmentOptions.Center);
+        Label(root.transform, "Enter your employee code and personal PIN", 30, FontStyles.Normal,
+            new Vector2(90, -500), new Vector2(900, 70), TextAlignmentOptions.Center, Muted);
+        employeeCodeInput = TextInput(root.transform, "Employee code", new Vector2(110, -650),
+            new Vector2(860, 105), false);
+        pinInput = TextInput(root.transform, "PIN", new Vector2(110, -790),
+            new Vector2(860, 105), true);
+        Button login = ActionButton(root.transform, "Sign In", Peach,
+            new Vector2(110, -950), new Vector2(860, 120));
+        login.onClick.AddListener(() => StartCoroutine(LoginWorker()));
+        loginStatus = Label(root.transform, "", 27, FontStyles.Normal,
+            new Vector2(110, -1100), new Vector2(860, 180), TextAlignmentOptions.Center, Orange);
+        return root;
+    }
+
+    private IEnumerator LoginWorker()
+    {
+        loginStatus.text = "Connecting to training server...";
+        string error = null;
+        yield return AuthManager.Instance.WorkerLogin(employeeCodeInput.text, pinInput.text,
+            value => error = value);
+        pinInput.text = "";
+        if (!string.IsNullOrEmpty(error)) { loginStatus.text = error; yield break; }
+        yield return WorkerSelector.Instance.Refresh(value => error = value);
+        if (!string.IsNullOrEmpty(error)) { loginStatus.text = error; AuthManager.Instance.Logout(); yield break; }
+        loginStatus.text = "";
+        AttemptSyncManager.Instance?.SyncNow();
+        Show(View.Home);
+        RefreshWorkerDashboard();
     }
 
     private GameObject BuildHome()
@@ -188,9 +245,8 @@ public class FireTrainingUIController : MonoBehaviour
         Label(root.transform, "Powered by augmented reality", 34, FontStyles.Normal,
             new Vector2(72, -495), new Vector2(800, 55), TextAlignmentOptions.Left, Muted);
 
-        Button backend = OutlineButton(root.transform, "Backend Sign In / Worker",
-            new Vector2(670, -205), new Vector2(350, 72));
-        backend.onClick.AddListener(() => IntegrationRuntime.RequireSetup());
+        workerSummary = Label(root.transform, "Worker", 25, FontStyles.Bold,
+            new Vector2(650, -135), new Vector2(360, 100), TextAlignmentOptions.Right, Peach);
 
         GameObject module = Panel(root.transform, "Module Card", Card,
             new Vector2(60, -600), new Vector2(960, 555), new Vector2(0, 1), new Vector2(0, 1));
@@ -223,10 +279,14 @@ public class FireTrainingUIController : MonoBehaviour
         Button last = OutlineButton(root.transform, "View Last Result",
             new Vector2(60, -1490), new Vector2(960, 105));
         last.onClick.AddListener(() => { resultOpened = true; Show(View.Result); PopulateResult(); });
-        Label(root.transform,
-            "<b>!  Simulation only.</b> This training does not replace real fire safety procedures.\nAlways follow your site's emergency protocols during an actual incident.",
-            25, FontStyles.Normal, new Vector2(60, 118), new Vector2(960, 155),
-            TextAlignmentOptions.Center, Muted, new Vector2(0, 0), new Vector2(0, 0), new Vector2(0, 0));
+        Button sync = ActionButton(root.transform, "Sync Attempts", Blue,
+            new Vector2(60, -1620), new Vector2(460, 90));
+        sync.onClick.AddListener(() => AttemptSyncManager.Instance?.SyncNow());
+        Button signOut = OutlineButton(root.transform, "Sign Out",
+            new Vector2(540, -1620), new Vector2(480, 90));
+        signOut.onClick.AddListener(() => { AuthManager.Instance?.Logout(); Show(View.Login); });
+        attemptSummary = Label(root.transform, "Attempts", 23, FontStyles.Normal,
+            new Vector2(60, -1725), new Vector2(960, 160), TextAlignmentOptions.Center, Muted);
         return root;
     }
 
@@ -518,6 +578,7 @@ public class FireTrainingUIController : MonoBehaviour
             return;
         viewInitialized = true;
         currentView = view;
+        loginView.SetActive(view == View.Login);
         homeView.SetActive(view == View.Home);
         permissionView.SetActive(view == View.Permission);
         placementView.SetActive(view == View.Placement);
@@ -531,11 +592,56 @@ public class FireTrainingUIController : MonoBehaviour
     {
         return view switch
         {
-            View.Home => homeView, View.Permission => permissionView,
+            View.Login => loginView, View.Home => homeView, View.Permission => permissionView,
             View.Placement => placementView, View.Training => trainingView,
             View.Extinguished => extinguishedView, View.Result => resultView,
             _ => helpView
         };
+    }
+
+    private void RefreshWorkerDashboard()
+    {
+        if (workerSummary == null || attemptSummary == null) return;
+        WorkerRecord worker = WorkerSelector.Instance?.SelectedWorker;
+        workerSummary.text = worker == null ? "No worker" : worker.fullName + "\n" + worker.employeeCode;
+        System.Collections.Generic.List<QueuedAttempt> attempts = OfflineAttemptQueue.Load();
+        string workerId = worker?.id;
+        attempts = attempts.FindAll(item => AttemptSyncManager.PayloadWorkerId(item) == workerId);
+        int pendingCount = attempts.FindAll(item => item.state == "pending").Count;
+        int syncedCount = attempts.FindAll(item => item.state == "synced").Count;
+        string recent = "";
+        for (int i = attempts.Count - 1; i >= 0 && i >= attempts.Count - 3; i--)
+        {
+            QueuedAttempt item = attempts[i];
+            AttemptPayload payload = null;
+            try { payload = JsonUtility.FromJson<AttemptPayload>(item.payloadJson); }
+            catch (System.ArgumentException) { }
+            string module = payload?.moduleId == "gas-confined-space" ? "Gas" : "Fire";
+            string score = item.serverResult?.score == null ? "" :
+                " · " + item.serverResult.score.percentage.ToString("0.#") + "%";
+            recent += "\n" + module + " · " + item.state + score;
+        }
+        attemptSummary.text = "Attempts: " + attempts.Count + "   Synced: " + syncedCount +
+            "   Pending: " + pendingCount + recent;
+    }
+
+    private static TMP_InputField TextInput(Transform parent, string placeholder, Vector2 position,
+        Vector2 size, bool secret)
+    {
+        GameObject go = Panel(parent, placeholder, Card, position, size,
+            new Vector2(0, 1), new Vector2(0, 1));
+        go.GetComponent<Image>().raycastTarget = true;
+        TMP_InputField input = go.AddComponent<TMP_InputField>();
+        TMP_Text text = Label(go.transform, "", 31, FontStyles.Normal, new Vector2(28, -10),
+            size - new Vector2(56, 20), TextAlignmentOptions.MidlineLeft);
+        TMP_Text hint = Label(go.transform, placeholder, 31, FontStyles.Normal, new Vector2(28, -10),
+            size - new Vector2(56, 20), TextAlignmentOptions.MidlineLeft, Muted);
+        input.textComponent = text;
+        input.placeholder = hint;
+        input.textViewport = go.GetComponent<RectTransform>();
+        input.contentType = secret ? TMP_InputField.ContentType.Pin : TMP_InputField.ContentType.Standard;
+        input.characterLimit = secret ? 8 : 50;
+        return input;
     }
 
     private GameObject Screen(string name, bool opaque)

@@ -20,6 +20,7 @@ function signAccessToken(user) {
   const payload = encode({
     sub: user.id,
     email: user.email,
+    employeeCode: user.employeeCode,
     role: user.role,
     iss: ISSUER,
     aud: AUDIENCE,

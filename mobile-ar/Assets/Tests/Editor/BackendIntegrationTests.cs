@@ -86,6 +86,7 @@ public class BackendIntegrationTests
     [TestCase(503, "unavailable", "pending")]
     [TestCase(422, "validation", "rejected")]
     [TestCase(404, "worker missing", "needs-correction")]
+    [TestCase(403, "wrong worker", "forbidden")]
     [TestCase(409, "ATTEMPT_ID_CONFLICT", "conflict")]
     [TestCase(409, "VERSION_MISMATCH", "version-mismatch")]
     public void SyncFailuresAreClassified(long status, string message, string expected)

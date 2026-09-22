@@ -10,7 +10,8 @@ public sealed class WorkerSelector : MonoBehaviour
     public readonly List<WorkerRecord> Workers = new();
     public readonly List<ModuleRecord> Modules = new();
     public WorkerRecord SelectedWorker { get; private set; }
-    public bool HasTrainingContext => SelectedWorker != null && Module("fire-response") != null && Module("gas-confined-space") != null;
+    public bool HasTrainingContext => AuthManager.Instance != null && AuthManager.Instance.IsAuthenticated &&
+        SelectedWorker != null && Module("fire-response") != null && Module("gas-confined-space") != null;
     public event Action Changed;
     private string CachePath => System.IO.Path.Combine(Application.persistentDataPath, "backend-context.json");
 
@@ -25,29 +26,33 @@ public sealed class WorkerSelector : MonoBehaviour
     {
         if (AuthManager.Instance == null || !AuthManager.Instance.IsAuthenticated)
         { completed?.Invoke("Authentication required."); yield break; }
-        ApiResult workersResult = null;
-        yield return ApiClient.Send("GET", "/api/workers?active=true&limit=100&offset=0", null,
-            AuthManager.Instance.AccessToken, value => workersResult = value);
-        if (workersResult == null || !workersResult.Success)
-        { completed?.Invoke(ApiErrors.Message(workersResult)); yield break; }
         ApiResult modulesResult = null;
         yield return ApiClient.Send("GET", "/api/modules", null, AuthManager.Instance.AccessToken,
             value => modulesResult = value);
         if (modulesResult == null || !modulesResult.Success)
         { completed?.Invoke(ApiErrors.Message(modulesResult)); yield break; }
-        WorkerListResponse workerResponse = JsonUtility.FromJson<WorkerListResponse>(workersResult.body);
         ModuleListResponse moduleResponse = JsonUtility.FromJson<ModuleListResponse>(modulesResult.body);
-        Workers.Clear(); Modules.Clear();
-        if (workerResponse?.data != null)
-            foreach (WorkerRecord worker in workerResponse.data) if (worker.active) Workers.Add(worker);
+        Modules.Clear();
         if (moduleResponse?.data != null)
             foreach (ModuleRecord module in moduleResponse.data) if (module.active) Modules.Add(module);
-        string previousId = SelectedWorker?.id;
-        SelectedWorker = Workers.Find(w => w.id == previousId);
-        if (SelectedWorker == null && Workers.Count > 0) SelectedWorker = Workers[0];
         SaveCache(); Changed?.Invoke();
-        completed?.Invoke(workerResponse?.meta != null && workerResponse.meta.total > ApiConfig.WorkerPageSize
-            ? "Showing the first 100 active workers." : null);
+        completed?.Invoke(Module("fire-response") == null || Module("gas-confined-space") == null
+            ? "Required training modules are unavailable." : null);
+    }
+
+    public void SetAuthenticatedWorker(WorkerRecord worker)
+    {
+        SelectedWorker = worker;
+        Workers.Clear();
+        if (worker != null) Workers.Add(worker);
+        SaveCache(); Changed?.Invoke();
+    }
+
+    public void ClearSession()
+    {
+        SelectedWorker = null;
+        Workers.Clear();
+        Changed?.Invoke();
     }
 
     public void Select(int index)

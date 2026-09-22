@@ -9,6 +9,7 @@ function validateCreateWorker(body) {
     typeof body?.preferredLanguage === 'string'
       ? body.preferredLanguage.trim().toLowerCase()
       : 'en';
+  const pin = typeof body?.pin === 'string' ? body.pin.trim() : '';
 
   if (!/^[A-Z0-9][A-Z0-9_-]{1,49}$/.test(employeeCode)) {
     errors.push({
@@ -22,12 +23,22 @@ function validateCreateWorker(body) {
   if (!LANGUAGES.has(preferredLanguage)) {
     errors.push({ field: 'preferredLanguage', message: 'Language must be en, hi or sat' });
   }
+  if (!/^\d{4,8}$/.test(pin)) {
+    errors.push({ field: 'pin', message: 'PIN must contain 4 to 8 digits' });
+  }
 
   return {
     valid: errors.length === 0,
     errors,
-    value: { employeeCode, fullName, preferredLanguage },
+    value: { employeeCode, fullName, preferredLanguage, pin },
   };
 }
 
-module.exports = { validateCreateWorker };
+function validateWorkerPin(body) {
+  const pin = typeof body?.pin === 'string' ? body.pin.trim() : '';
+  const errors = /^\d{4,8}$/.test(pin)
+    ? [] : [{ field: 'pin', message: 'PIN must contain 4 to 8 digits' }];
+  return { valid: errors.length === 0, errors, value: { pin } };
+}
+
+module.exports = { validateCreateWorker, validateWorkerPin };

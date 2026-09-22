@@ -163,3 +163,37 @@ test('login validates the request before querying the database', async () => {
   assert.equal(body.error.code, 'VALIDATION_ERROR');
   assert.equal(body.error.details.length, 2);
 });
+
+test('worker login requires an employee code and numeric PIN', async () => {
+  const response = await fetch(`${baseUrl}/api/auth/worker-login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ employeeCode: '', pin: 'abc' }),
+  });
+  const body = await response.json();
+  assert.equal(response.status, 400);
+  assert.equal(body.error.code, 'VALIDATION_ERROR');
+  assert.ok(body.error.details.some((detail) => detail.field === 'employeeCode'));
+  assert.ok(body.error.details.some((detail) => detail.field === 'pin'));
+});
+
+test('worker tokens cannot submit attempts for another worker', async () => {
+  const workerId = '87c16c44-4efd-4a9f-ac47-48ae83727125';
+  const otherWorkerId = '97c16c44-4efd-4a9f-ac47-48ae83727126';
+  const token = signAccessToken({ id: workerId, employeeCode: 'JH-1001', role: 'worker' });
+  const now = new Date().toISOString();
+  const response = await fetch(`${baseUrl}/api/attempts/sync`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      attemptId: '77c16c44-4efd-4a9f-ac47-48ae83727127',
+      workerId: otherWorkerId,
+      moduleId: 'fire-response', moduleVersion: 1, scoringVersion: 1,
+      languageCode: 'en', startedAt: now, completedAt: now,
+      actions: [{ stepId: 'identify_exit', selectedValue: 'safe-exit', occurredAt: now, sequenceNumber: 0 }],
+    }),
+  });
+  const body = await response.json();
+  assert.equal(response.status, 403);
+  assert.equal(body.error.code, 'WORKER_ATTEMPT_FORBIDDEN');
+});

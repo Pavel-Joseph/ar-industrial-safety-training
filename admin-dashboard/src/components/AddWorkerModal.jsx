@@ -12,6 +12,7 @@ export default function AddWorkerModal({ onClose, onCreated }) {
   const liveMode = api.isLiveMode();
   const [name, setName] = useState("");
   const [workerCode, setWorkerCode] = useState("");
+  const [pin, setPin] = useState("");
   const [site, setSite] = useState("");
   const [language, setLanguage] = useState("hi");
   const [submitting, setSubmitting] = useState(false);
@@ -22,7 +23,7 @@ export default function AddWorkerModal({ onClose, onCreated }) {
     setError("");
     setSubmitting(true);
     try {
-      const res = await api.createWorker({ name, workerCode, site, language });
+      const res = await api.createWorker({ name, workerCode, site, language, pin });
       onCreated(res.data);
       onClose();
     } catch (err) {
@@ -68,6 +69,23 @@ export default function AddWorkerModal({ onClose, onCreated }) {
               placeholder="e.g. JH-1052"
               value={workerCode}
               onChange={(e) => setWorkerCode(e.target.value)}
+              required
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="w-pin">Worker PIN</label>
+            <input
+              id="w-pin"
+              className="text-input"
+              style={{ width: "100%" }}
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]{4,8}"
+              minLength={4}
+              maxLength={8}
+              placeholder="4 to 8 digits"
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
               required
             />
           </div>

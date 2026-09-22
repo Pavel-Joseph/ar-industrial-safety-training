@@ -116,10 +116,10 @@ export async function getWorkers(search = "") {
   };
 }
 
-export async function createWorker({ name, workerCode, site, language }) {
+export async function createWorker({ name, workerCode, site, language, pin }) {
   if (live()) {
     const response = await request("/api/workers", {
-      method: "POST", body: { fullName: name, employeeCode: workerCode, preferredLanguage: language }
+      method: "POST", body: { fullName: name, employeeCode: workerCode, preferredLanguage: language, pin }
     });
     return { data: mapWorker(response.data), source: "live" };
   }
@@ -144,6 +144,14 @@ export async function getWorker(workerId) {
     } : null,
     source: "mock"
   };
+}
+
+export async function setWorkerPin(workerId, pin) {
+  if (!live()) return { data: { workerId, pinConfigured: true }, source: "mock" };
+  const response = await request(`/api/workers/${encodeURIComponent(workerId)}/pin`, {
+    method: "PATCH", body: { pin }
+  });
+  return { data: response.data, source: "live" };
 }
 
 export async function getModules() {

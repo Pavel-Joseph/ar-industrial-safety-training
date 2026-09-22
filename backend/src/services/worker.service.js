@@ -1,5 +1,6 @@
 const { query } = require('../config/database');
 const { AppError } = require('../utils/app-error');
+const { hashPassword } = require('./password.service');
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -79,11 +80,12 @@ async function getWorker(workerId) {
 
 async function createWorker(worker) {
   try {
+    const pinHash = await hashPassword(worker.pin);
     const result = await query(
-      `INSERT INTO workers (employee_code, full_name, preferred_language)
-       VALUES ($1, $2, $3)
+      `INSERT INTO workers (employee_code, full_name, preferred_language, pin_hash)
+       VALUES ($1, $2, $3, $4)
        RETURNING id, employee_code, full_name, preferred_language, active, created_at, updated_at`,
-      [worker.employeeCode, worker.fullName, worker.preferredLanguage],
+      [worker.employeeCode, worker.fullName, worker.preferredLanguage, pinHash],
     );
     return mapWorker(result.rows[0]);
   } catch (error) {
@@ -94,4 +96,18 @@ async function createWorker(worker) {
   }
 }
 
-module.exports = { listWorkers, getWorker, createWorker };
+async function setWorkerPin(workerId, pin) {
+  if (!UUID_PATTERN.test(workerId)) {
+    throw new AppError(400, 'INVALID_WORKER_ID', 'Worker ID must be a UUID');
+  }
+  const pinHash = await hashPassword(pin);
+  const result = await query(
+    `UPDATE workers SET pin_hash = $1, updated_at = NOW()
+      WHERE id = $2 RETURNING id`,
+    [pinHash, workerId],
+  );
+  if (!result.rows[0]) throw new AppError(404, 'WORKER_NOT_FOUND', 'Worker was not found');
+  return { workerId, pinConfigured: true };
+}
+
+module.exports = { listWorkers, getWorker, createWorker, setWorkerPin };

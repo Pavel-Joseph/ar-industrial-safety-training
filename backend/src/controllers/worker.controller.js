@@ -15,4 +15,9 @@ async function createWorker(request, response) {
   response.status(201).json({ data });
 }
 
-module.exports = { listWorkers, getWorker, createWorker };
+async function setWorkerPin(request, response) {
+  const data = await workerService.setWorkerPin(request.params.workerId, request.validatedBody.pin);
+  response.status(200).json({ data });
+}
+
+module.exports = { listWorkers, getWorker, createWorker, setWorkerPin };

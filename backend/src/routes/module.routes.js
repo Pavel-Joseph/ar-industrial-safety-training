@@ -6,7 +6,7 @@ const { authorize } = require('../middleware/authorize');
 
 const router = express.Router();
 
-router.use(authenticate, authorize('admin', 'safety_officer'));
+router.use(authenticate, authorize('admin', 'safety_officer', 'worker'));
 router.get('/', moduleController.listModules);
 router.get('/:moduleId', moduleController.getModule);
 

@@ -7,7 +7,7 @@
 - Identifiers: UUIDs generated before offline attempts are queued
 - Timestamps: ISO 8601 in UTC
 - Languages: `en`, `hi`, `sat`
-- Roles: `admin`, `safety_officer`
+- Roles: `admin`, `safety_officer`, and mobile-app `worker`
 
 Successful collection responses use a `data` array and optional `meta` object.
 Errors use the following shape:
@@ -43,6 +43,29 @@ degraded state when the API is running but PostgreSQL cannot be reached.
 }
 ```
 
+### `POST /api/auth/worker-login`
+
+The mobile training app authenticates an active worker with the employee code
+and 4–8 digit PIN configured by an administrator.
+
+```json
+{ "employeeCode": "JH-1001", "pin": "1234" }
+```
+
+The response contains `data.accessToken`, `data.expiresIn`, and `data.worker`.
+The worker token may read active module metadata and submit attempts only when
+the payload `workerId` equals the authenticated worker ID.
+
+Administrators configure or reset a PIN with:
+
+```text
+PATCH /api/workers/:workerId/pin
+```
+
+```json
+{ "pin": "1234" }
+```
+
 The response includes a Bearer access token, expiry in seconds and the user's
 ID, email and role. Use the token on protected endpoints:
 
@@ -56,6 +79,7 @@ Authorization: Bearer <accessToken>
 |---|---|---|
 | GET | `/api/workers` | Admin or safety officer |
 | POST | `/api/workers` | Admin or safety officer |
+| PATCH | `/api/workers/:workerId/pin` | Admin |
 | GET | `/api/workers/:workerId` | Admin or safety officer |
 
 Worker lists accept `search`, `active`, `limit` and `offset` query parameters.
@@ -67,7 +91,8 @@ Create-worker request:
 {
   "employeeCode": "MINE-001",
   "fullName": "Example Worker",
-  "preferredLanguage": "hi"
+  "preferredLanguage": "hi",
+  "pin": "1234"
 }
 ```
 
@@ -75,8 +100,8 @@ Create-worker request:
 
 | Method | Path | Access |
 |---|---|---|
-| GET | `/api/modules` | Admin or safety officer |
-| GET | `/api/modules/:moduleId` | Admin or safety officer |
+| GET | `/api/modules` | Admin, safety officer, or worker |
+| GET | `/api/modules/:moduleId` | Admin, safety officer, or worker |
 
 ### Assessment-result endpoints
 

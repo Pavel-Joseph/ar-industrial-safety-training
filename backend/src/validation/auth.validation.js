@@ -17,4 +17,20 @@ function validateLogin(body) {
   };
 }
 
-module.exports = { validateLogin };
+function validateWorkerLogin(body) {
+  const errors = [];
+  const employeeCode =
+    typeof body?.employeeCode === 'string' ? body.employeeCode.trim().toUpperCase() : '';
+  const pin = typeof body?.pin === 'string' ? body.pin.trim() : '';
+
+  if (!/^[A-Z0-9][A-Z0-9_-]{1,49}$/.test(employeeCode)) {
+    errors.push({ field: 'employeeCode', message: 'Enter a valid employee code' });
+  }
+  if (!/^\d{4,8}$/.test(pin)) {
+    errors.push({ field: 'pin', message: 'PIN must contain 4 to 8 digits' });
+  }
+
+  return { valid: errors.length === 0, errors, value: { employeeCode, pin } };
+}
+
+module.exports = { validateLogin, validateWorkerLogin };

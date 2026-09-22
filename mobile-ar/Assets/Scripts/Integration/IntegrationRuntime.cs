@@ -11,12 +11,11 @@ public static class IntegrationRuntime
         root.AddComponent<AuthManager>();
         root.AddComponent<WorkerSelector>();
         root.AddComponent<AttemptSyncManager>();
-        root.AddComponent<IntegrationUI>();
     }
 
     public static bool TrainingContextReady => WorkerSelector.Instance != null && WorkerSelector.Instance.HasTrainingContext;
     public static void RequireSetup()
     {
-        IntegrationUI.Show("Sign in and select an active worker before starting training.");
+        FireTrainingUIController.ShowWorkerLogin("Sign in before starting training.");
     }
 }

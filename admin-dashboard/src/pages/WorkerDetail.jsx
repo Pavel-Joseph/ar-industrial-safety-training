@@ -21,6 +21,20 @@ export default function WorkerDetail() {
   const { t } = useLanguage();
   const [state, setState] = useState({ status: "loading", worker: null, modules: [] });
   const [copied, setCopied] = useState(false);
+  const [pin, setPin] = useState("");
+  const [pinMessage, setPinMessage] = useState("");
+
+  async function savePin(e) {
+    e.preventDefault();
+    setPinMessage("Saving…");
+    try {
+      await api.setWorkerPin(id, pin);
+      setPin("");
+      setPinMessage("Worker PIN updated");
+    } catch (error) {
+      setPinMessage(error.message || "Could not update PIN");
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -125,6 +139,17 @@ export default function WorkerDetail() {
             <div className="value">{certificateCount}</div>
           </div>
         </div>
+
+        <form onSubmit={savePin} style={{ display: "flex", gap: 10, alignItems: "end", marginTop: 20 }}>
+          <div className="field" style={{ margin: 0, flex: 1 }}>
+            <label htmlFor="worker-pin">Worker app PIN</label>
+            <input id="worker-pin" className="text-input" type="password" inputMode="numeric"
+              pattern="[0-9]{4,8}" minLength={4} maxLength={8} placeholder="4 to 8 digits"
+              value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} required />
+          </div>
+          <button className="btn btn-primary" type="submit">Set PIN</button>
+          {pinMessage && <span className="text-muted" style={{ fontSize: 13 }}>{pinMessage}</span>}
+        </form>
 
         <div className="section-heading" style={{ marginTop: 8, marginBottom: 8 }}>
           <h2 style={{ fontSize: 15 }}>Training progress</h2>

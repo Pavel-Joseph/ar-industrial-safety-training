@@ -5,4 +5,9 @@ async function login(request, response) {
   response.status(200).json({ data });
 }
 
-module.exports = { login };
+async function workerLogin(request, response) {
+  const data = await authService.workerLogin(request.validatedBody);
+  response.status(200).json({ data });
+}
+
+module.exports = { login, workerLogin };

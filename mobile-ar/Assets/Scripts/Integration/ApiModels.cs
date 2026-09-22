@@ -2,10 +2,9 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-[Serializable] public class LoginRequest { public string email; public string password; }
-[Serializable] public class LoginUser { public string id; public string email; public string role; }
-[Serializable] public class LoginData { public string accessToken; public string tokenType; public int expiresIn; public LoginUser user; }
-[Serializable] public class LoginResponse { public LoginData data; }
+[Serializable] public class WorkerLoginRequest { public string employeeCode; public string pin; }
+[Serializable] public class WorkerLoginData { public string accessToken; public string tokenType; public int expiresIn; public WorkerRecord worker; }
+[Serializable] public class WorkerLoginResponse { public WorkerLoginData data; }
 
 [Serializable]
 public class WorkerRecord
