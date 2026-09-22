@@ -1,0 +1,30 @@
+# Unity generated caches and local editor state
+/mobile-ar/[Ll]ibrary/
+/mobile-ar/[Tt]emp/
+/mobile-ar/[Oo]bj/
+/mobile-ar/[Ll]ogs/
+/mobile-ar/[Uu]ser[Ss]ettings/
+/mobile-ar/.utmp/
+/mobile-ar/[Mm]emoryCaptures/
+/mobile-ar/[Rr]ecordings/
+
+# Local builds and IL2CPP/Gradle output
+/mobile-ar/[Bb]uild/
+/mobile-ar/[Bb]uilds/
+
+# Unity/IDE generated solution files
+/mobile-ar/*.csproj
+/mobile-ar/*.sln
+/mobile-ar/*.slnx
+/mobile-ar/*.user
+/mobile-ar/.vs/
+/mobile-ar/.idea/
+
+# Packaged application output
+*.apk
+*.aab
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini
