@@ -17,6 +17,9 @@ public class BackendIntegrationTests
         Assert.AreEqual(2, payload.moduleVersion);
         Assert.AreEqual(3, payload.scoringVersion);
         Assert.AreEqual(0, payload.actions[0].sequenceNumber);
+        StringAssert.IsMatch(@"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$", payload.startedAt);
+        StringAssert.IsMatch(@"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$", payload.completedAt);
+        StringAssert.IsMatch(@"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$", payload.actions[0].occurredAt);
     }
 
     [Test]

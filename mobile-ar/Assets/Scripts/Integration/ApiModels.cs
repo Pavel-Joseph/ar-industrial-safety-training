@@ -91,7 +91,11 @@ public static class AttemptPayloadFactory
         string startedAt, string completedAt, AttemptAction[] actions)
     {
         if (worker == null || module == null) return null;
-        for (int i = 0; i < actions.Length; i++) actions[i].sequenceNumber = i;
+        for (int i = 0; i < actions.Length; i++)
+        {
+            actions[i].sequenceNumber = i;
+            actions[i].occurredAt = NormalizeTimestamp(actions[i].occurredAt);
+        }
         string language = worker.preferredLanguage;
         if (language != "en" && language != "hi" && language != "sat") language = "en";
         return new AttemptPayload
@@ -102,8 +106,8 @@ public static class AttemptPayloadFactory
             moduleVersion = module.currentVersion,
             scoringVersion = module.scoringVersion,
             languageCode = language,
-            startedAt = startedAt,
-            completedAt = completedAt,
+            startedAt = NormalizeTimestamp(startedAt),
+            completedAt = NormalizeTimestamp(completedAt),
             deviceMetadata = new DeviceMetadata
             {
                 platform = Application.platform.ToString(),
@@ -114,5 +118,13 @@ public static class AttemptPayloadFactory
         };
     }
 
-    public static string Utc(DateTime value) => value.ToUniversalTime().ToString("O");
+    // The hosted API validates ISO timestamps with at most millisecond precision.
+    public static string Utc(DateTime value) =>
+        value.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'");
+
+    private static string NormalizeTimestamp(string value)
+    {
+        return DateTime.TryParse(value, null, System.Globalization.DateTimeStyles.RoundtripKind,
+            out DateTime parsed) ? Utc(parsed) : value;
+    }
 }

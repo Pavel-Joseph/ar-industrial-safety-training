@@ -57,7 +57,14 @@ public static class ApiErrors
         try
         {
             ApiErrorResponse error = JsonUtility.FromJson<ApiErrorResponse>(result.body);
-            if (error?.error != null) return error.error.code + ": " + error.error.message;
+            if (error?.error != null)
+            {
+                string message = error.error.code + ": " + error.error.message;
+                if (error.error.details != null && error.error.details.Length > 0)
+                    message += " (" + error.error.details[0].field + ": " +
+                        error.error.details[0].message + ")";
+                return message;
+            }
         }
         catch (ArgumentException) { }
         return "Backend request failed (HTTP " + result.statusCode + ").";

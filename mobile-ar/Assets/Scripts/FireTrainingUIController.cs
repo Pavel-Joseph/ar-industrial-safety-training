@@ -188,6 +188,10 @@ public class FireTrainingUIController : MonoBehaviour
         Label(root.transform, "Powered by augmented reality", 34, FontStyles.Normal,
             new Vector2(72, -495), new Vector2(800, 55), TextAlignmentOptions.Left, Muted);
 
+        Button backend = OutlineButton(root.transform, "Backend Sign In / Worker",
+            new Vector2(670, -205), new Vector2(350, 72));
+        backend.onClick.AddListener(() => IntegrationRuntime.RequireSetup());
+
         GameObject module = Panel(root.transform, "Module Card", Card,
             new Vector2(60, -600), new Vector2(960, 555), new Vector2(0, 1), new Vector2(0, 1));
         Label(module.transform, "MODULE 1     <color=#63CC72>READY</color>", 28,
