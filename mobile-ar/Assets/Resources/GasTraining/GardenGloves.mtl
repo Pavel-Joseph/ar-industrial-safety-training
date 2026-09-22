@@ -1,0 +1,6 @@
+newmtl material_0
+Kd 0.7 0.7 0.7
+Ks .08 .08 .08
+Ns 24
+map_Kd GardenGloves_base_0.jpg
+

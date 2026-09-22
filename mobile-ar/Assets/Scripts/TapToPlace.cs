@@ -246,6 +246,7 @@ public class TapToPlace : MonoBehaviour
         AttachVisualToTarget("ExtinguisherVisual", extinguisherRoot);
         AttachVisualToTarget("ExtinguisherLabel", extinguisherRoot);
         AttachVisualToTarget("AssemblyLabel", assemblyRoot);
+        AttachAssemblyLocationMarker();
         FitVisualHeight(exitRoot != null ? exitRoot.Find("ExitDoorVisual") : null, 2.1f);
         FitVisualHeight(extinguisherRoot != null ? extinguisherRoot.Find("ExtinguisherVisual") : null, 0.68f);
         EnsureTouchTarget(exitRoot, "ExitTouchZone", new Vector3(1.35f, 2.3f, 0.75f));
@@ -433,6 +434,58 @@ public class TapToPlace : MonoBehaviour
         for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
         if (bounds.size.y < 0.001f) return;
         visual.localScale *= desiredHeight / bounds.size.y;
+    }
+
+    private void AttachAssemblyLocationMarker()
+    {
+        if (assemblyRoot == null || assemblyRoot.Find("AssemblyLocationVisual") != null)
+            return;
+        GameObject platform = AttachAssemblyAsset("GasTraining/RoundPlatform",
+            "RoundAssemblyPlatform", 1.8f, floorY, new Vector3(0f, 180f, 0f));
+        float markerBottom = floorY;
+        if (platform != null)
+        {
+            Renderer platformRenderer = platform.GetComponentInChildren<Renderer>();
+            if (platformRenderer != null) markerBottom = platformRenderer.bounds.max.y;
+        }
+        AttachAssemblyAsset("GasTraining/AssemblyLocation", "AssemblyLocationVisual",
+            1.1f, markerBottom, new Vector3(90f, 180f, 0f));
+        Renderer markerRenderer = assemblyRoot.GetComponent<Renderer>();
+        if (markerRenderer != null) markerRenderer.enabled = false;
+    }
+
+    private GameObject AttachAssemblyAsset(string resourcePath, string objectName,
+        float targetSize, float bottomY, Vector3 eulerAngles)
+    {
+        GameObject prefab = Resources.Load<GameObject>(resourcePath);
+        if (prefab == null) return null;
+
+        GameObject visual = Instantiate(prefab, assemblyRoot);
+        visual.name = objectName;
+        visual.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.Euler(eulerAngles));
+        GasTrainingMaterialUtility.Apply(visual, resourcePath);
+        Renderer[] renderers = visual.GetComponentsInChildren<Renderer>(true);
+        if (renderers.Length == 0)
+        {
+            Destroy(visual);
+            return null;
+        }
+        Bounds bounds = renderers[0].bounds;
+        for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+        float sourceSize = Mathf.Max(bounds.size.x, Mathf.Max(bounds.size.y, bounds.size.z));
+        Vector3 parentScale = assemblyRoot.lossyScale;
+        float factor = targetSize / Mathf.Max(sourceSize, 0.001f);
+        visual.transform.localScale = Vector3.Scale(visual.transform.localScale,
+            new Vector3(factor / Mathf.Max(Mathf.Abs(parentScale.x), 0.001f),
+                factor / Mathf.Max(Mathf.Abs(parentScale.y), 0.001f),
+                factor / Mathf.Max(Mathf.Abs(parentScale.z), 0.001f)));
+
+        bounds = renderers[0].bounds;
+        for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+        visual.transform.position += Vector3.up * (bottomY - bounds.min.y);
+        foreach (Collider collider in visual.GetComponentsInChildren<Collider>(true))
+            collider.enabled = false;
+        return visual;
     }
 
     private void CheckTrainingTap(Vector2 tapPosition)

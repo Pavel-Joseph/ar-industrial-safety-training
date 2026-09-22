@@ -53,6 +53,8 @@ public class GasLeakModuleController : MonoBehaviour
     private Transform gasExitTarget;
     private Transform safeTarget;
     private ParticleSystem gasPlume;
+    private ParticleSystem groundGas;
+    private ParticleSystem aerialGas;
     private TMP_Text detectorDisplay;
     private TMP_Text gasReading;
     private AudioSource hissAudio;
@@ -66,6 +68,12 @@ public class GasLeakModuleController : MonoBehaviour
     private Button respiratorButton;
     private Button glovesButton;
     private Button detectorButton;
+    private Button medicalMaskButton;
+    private Button gardenGlovesButton;
+    private GameObject equippedMask;
+    private GameObject equippedGloves;
+    private GameObject equippedDetector;
+    private readonly List<GameObject> ppeDisplayObjects = new();
     private Step step;
     private Action returnHome;
     private int incorrect;
@@ -126,7 +134,10 @@ public class GasLeakModuleController : MonoBehaviour
             float growthTarget = leakIsolated ? (ventilationActive ? 0.35f : 1.45f) : 3.2f;
             float rate = ventilationActive ? 0.7f : 0.18f;
             hazardScale = Mathf.MoveTowards(hazardScale, growthTarget, rate * Time.deltaTime);
-            hazardTarget.localScale = new Vector3(hazardScale, 0.12f, hazardScale);
+            float spread01 = Mathf.InverseLerp(0.35f, 3.2f, hazardScale);
+            float cloudRadius = Mathf.Lerp(0.35f, 2.2f, spread01);
+            hazardTarget.localScale = new Vector3(cloudRadius * 2f, 0.12f, cloudRadius * 2f);
+            UpdateGasSpread(cloudRadius, spread01);
             float ppm = leakIsolated
                 ? Mathf.Lerp(32f, ventilationActive ? 0f : 12f,
                     Mathf.InverseLerp(3.2f, 0.35f, hazardScale))
@@ -276,9 +287,11 @@ public class GasLeakModuleController : MonoBehaviour
                 new Vector3(-2.05f, 0.85f, 1.8f), new Vector3(0.48f, 0.85f, 0.48f), metal);
         leakTarget = Primitive("LeakTarget", PrimitiveType.Sphere,
             new Vector3(0f, 0.82f, 1.8f), Vector3.one * 0.22f, warning).transform;
-        gasPlume = CreateGasPlume(leakTarget);
+        CreateGasEffects(leakTarget);
         hazardTarget = Primitive("HazardZone", PrimitiveType.Cylinder,
             new Vector3(0f, 0.035f, 1.8f), new Vector3(0.7f, 0.035f, 0.7f), yellow).transform;
+        Renderer hazardRenderer = hazardTarget.GetComponent<Renderer>();
+        if (hazardRenderer != null) hazardRenderer.enabled = false;
         CreateWorldLabel("GAS LEAK - TAP HAZARD", leakTarget,
             new Vector3(0f, 0.7f, 0f), Orange);
 
@@ -297,6 +310,7 @@ public class GasLeakModuleController : MonoBehaviour
 
         buddyTarget = BuildBuddy(buddy);
         CreateWorldLabel("BUDDY", buddyTarget, new Vector3(0f, 1.2f, 0f), Green);
+        BuildPpeVisuals();
 
         BuildDetector(metal, dark);
         BuildVentilationFan(metal, dark);
@@ -304,13 +318,25 @@ public class GasLeakModuleController : MonoBehaviour
         BuildGasExit();
 
         safeTarget = TargetRoot("SafeAssembly", new Vector3(4.4f, 0f, -2.8f),
-            Quaternion.identity, new Vector3(1.8f, 0.5f, 1.8f));
-        GameObject safeVisual = LoadVisual("GasTraining/AssemblyLocation", safeTarget,
-            "Assembly Location Visual", 1.4f, false, true);
+            Quaternion.Euler(0f, 180f, 0f), new Vector3(1.8f, 0.5f, 1.8f));
+        GameObject safePlatform = LoadVisual("GasTraining/RoundPlatform", safeTarget,
+            "Round Assembly Platform", 1.8f, false, true);
+        Transform locationMount = new GameObject("Horizontal Location Marker Mount").transform;
+        locationMount.SetParent(safeTarget, false);
+        locationMount.localRotation = Quaternion.Euler(90f, 180f, 0f);
+        GameObject safeVisual = LoadVisual("GasTraining/AssemblyLocation", locationMount,
+            "Assembly Location Visual", 1.1f, false, true);
+        if (safeVisual != null && safePlatform != null)
+        {
+            Renderer platformRenderer = safePlatform.GetComponentInChildren<Renderer>();
+            if (platformRenderer != null)
+                safeVisual.transform.position += Vector3.up *
+                    Mathf.Max(0f, platformRenderer.bounds.max.y - safeTarget.position.y);
+        }
         if (safeVisual == null)
             PrimitiveChild("Safe Point Fallback", PrimitiveType.Cylinder, safeTarget,
                 new Vector3(0f, 0.035f, 0f), new Vector3(0.9f, 0.035f, 0.9f), safe);
-        CreateWorldLabel("SAFE POINT", safeTarget, new Vector3(0f, 0.55f, 0f), Blue);
+        CreateWorldLabel("SAFE POINT", safeTarget, new Vector3(0f, 1.65f, 0f), Blue);
         buddyTarget.gameObject.SetActive(false);
         shutoffTarget.gameObject.SetActive(false);
         fanTarget.gameObject.SetActive(false);
@@ -365,9 +391,56 @@ public class GasLeakModuleController : MonoBehaviour
         return root.transform;
     }
 
-    private ParticleSystem CreateGasPlume(Transform leak)
+    private void BuildPpeVisuals()
     {
-        GameObject plumeObject = new GameObject("GasPlume");
+        ppeDisplayObjects.Clear();
+        CreatePpeDisplay("GasTraining/GasMask", "Gas Mask Display",
+            new Vector3(-2.4f, 0.9f, -3.5f), 0.48f, "GAS MASK");
+        CreatePpeDisplay("GasTraining/MechanicalGloves", "Mechanical Gloves Display",
+            new Vector3(-1.2f, 0.9f, -3.5f), 0.5f, "PROTECTIVE GLOVES");
+        CreatePpeDisplay("GasTraining/PpeDetector", "Detector Display",
+            new Vector3(0f, 0.9f, -3.5f), 0.42f, "GAS DETECTOR");
+        CreatePpeDisplay("GasTraining/MedicalMask", "Medical Mask Display",
+            new Vector3(1.2f, 0.9f, -3.5f), 0.42f, "MEDICAL MASK");
+        CreatePpeDisplay("GasTraining/GardenGloves", "Garden Gloves Display",
+            new Vector3(2.4f, 0.9f, -3.5f), 0.48f, "GARDEN GLOVES");
+
+        equippedMask = CreateEquippedPpe("GasTraining/GasMask", "Equipped Gas Mask",
+            new Vector3(0f, 1.55f, -0.2f), new Vector3(0f, 180f, 0f), 0.32f);
+        equippedGloves = CreateEquippedPpe("GasTraining/MechanicalGloves", "Equipped Gloves",
+            new Vector3(0f, 1.02f, -0.2f), new Vector3(0f, 180f, 0f), 0.55f);
+        equippedDetector = CreateEquippedPpe("GasTraining/PpeDetector", "Equipped Detector",
+            new Vector3(0.32f, 1.02f, -0.2f), new Vector3(0f, 0f, 0f), 0.22f);
+    }
+
+    private void CreatePpeDisplay(string path, string name, Vector3 position,
+        float size, string label)
+    {
+        Transform mount = new GameObject(name + " Mount").transform;
+        mount.SetParent(scenario.transform, false);
+        mount.localPosition = position;
+        GameObject visual = LoadVisual(path, mount, name, size, false, false);
+        if (visual == null) return;
+        CreateWorldLabel(label, mount, new Vector3(0f, 0.55f, 0f), Peach);
+        mount.gameObject.SetActive(false);
+        ppeDisplayObjects.Add(mount.gameObject);
+    }
+
+    private GameObject CreateEquippedPpe(string path, string name, Vector3 position,
+        Vector3 eulerAngles, float size)
+    {
+        Transform mount = new GameObject(name + " Mount").transform;
+        mount.SetParent(buddyTarget, false);
+        mount.localPosition = position;
+        mount.localRotation = Quaternion.Euler(eulerAngles);
+        GameObject visual = LoadVisual(path, mount, name, size, false, false);
+        mount.gameObject.SetActive(false);
+        return visual != null ? mount.gameObject : null;
+    }
+
+    private void CreateGasEffects(Transform leak)
+    {
+        GameObject plumeObject = new GameObject("Rising Steam Gas");
         plumeObject.transform.SetParent(leak, false);
         ParticleSystem plume = plumeObject.AddComponent<ParticleSystem>();
         var main = plume.main;
@@ -389,14 +462,131 @@ public class GasLeakModuleController : MonoBehaviour
         noise.enabled = true;
         noise.strength = 0.18f;
         noise.frequency = 0.55f;
-        ParticleSystemRenderer renderer = plume.GetComponent<ParticleSystemRenderer>();
-        Shader shader = Shader.Find("Particles/Standard Unlit");
+        ConfigureGasRenderer(plume.GetComponent<ParticleSystemRenderer>());
+        plume.Play(true);
+        gasPlume = plume;
+
+        GameObject groundObject = new GameObject("Ground Smoke Gas");
+        groundObject.transform.SetParent(leak, false);
+        groundObject.transform.localPosition = new Vector3(0f, -0.78f, 0f);
+        groundObject.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+        groundGas = groundObject.AddComponent<ParticleSystem>();
+        var groundMain = groundGas.main;
+        groundMain.loop = true;
+        groundMain.simulationSpace = ParticleSystemSimulationSpace.World;
+        groundMain.startLifetime = new ParticleSystem.MinMaxCurve(3.5f, 6.5f);
+        groundMain.startSpeed = new ParticleSystem.MinMaxCurve(0.03f, 0.14f);
+        groundMain.startSize = new ParticleSystem.MinMaxCurve(0.28f, 0.62f);
+        groundMain.startColor = new ParticleSystem.MinMaxGradient(
+            new Color(0.55f, 0.76f, 0.24f, 0.32f),
+            new Color(0.82f, 0.9f, 0.42f, 0.12f));
+        groundMain.maxParticles = 180;
+        var groundEmission = groundGas.emission;
+        groundEmission.rateOverTime = 18f;
+        var groundShape = groundGas.shape;
+        groundShape.shapeType = ParticleSystemShapeType.Circle;
+        groundShape.radius = 0.35f;
+        var groundNoise = groundGas.noise;
+        groundNoise.enabled = true;
+        groundNoise.strength = 0.28f;
+        groundNoise.frequency = 0.35f;
+        groundNoise.scrollSpeed = 0.18f;
+        var velocity = groundGas.velocityOverLifetime;
+        velocity.enabled = true;
+        velocity.space = ParticleSystemSimulationSpace.World;
+        velocity.x = new ParticleSystem.MinMaxCurve(-0.16f, 0.16f);
+        velocity.y = new ParticleSystem.MinMaxCurve(0.01f, 0.08f);
+        velocity.z = new ParticleSystem.MinMaxCurve(-0.16f, 0.16f);
+        ConfigureGasRenderer(groundGas.GetComponent<ParticleSystemRenderer>());
+        groundGas.Play(true);
+
+        GameObject aerialObject = new GameObject("Aerial Smoke Cloud Gas");
+        aerialObject.transform.SetParent(leak, false);
+        aerialObject.transform.localPosition = new Vector3(0f, 0.4f, 0f);
+        aerialGas = aerialObject.AddComponent<ParticleSystem>();
+        var aerialMain = aerialGas.main;
+        aerialMain.loop = true;
+        aerialMain.simulationSpace = ParticleSystemSimulationSpace.World;
+        aerialMain.startLifetime = new ParticleSystem.MinMaxCurve(4f, 7.5f);
+        aerialMain.startSpeed = new ParticleSystem.MinMaxCurve(0.025f, 0.1f);
+        aerialMain.startSize = new ParticleSystem.MinMaxCurve(0.45f, 0.9f);
+        aerialMain.startColor = new ParticleSystem.MinMaxGradient(
+            new Color(0.62f, 0.78f, 0.3f, 0.2f),
+            new Color(0.78f, 0.86f, 0.48f, 0.08f));
+        aerialMain.maxParticles = 100;
+        var aerialEmission = aerialGas.emission;
+        aerialEmission.rateOverTime = 8f;
+        var aerialShape = aerialGas.shape;
+        aerialShape.shapeType = ParticleSystemShapeType.Sphere;
+        aerialShape.radius = 0.3f;
+        aerialShape.radiusThickness = 1f;
+        var aerialNoise = aerialGas.noise;
+        aerialNoise.enabled = true;
+        aerialNoise.strength = 0.38f;
+        aerialNoise.frequency = 0.22f;
+        aerialNoise.scrollSpeed = 0.12f;
+        ConfigureGasRenderer(aerialGas.GetComponent<ParticleSystemRenderer>());
+        aerialGas.Play(true);
+    }
+
+    private void UpdateGasSpread(float radius, float spread01)
+    {
+        if (groundGas == null) return;
+        var shape = groundGas.shape;
+        shape.radius = radius;
+        var main = groundGas.main;
+        main.startSize = new ParticleSystem.MinMaxCurve(
+            Mathf.Lerp(0.22f, 0.55f, spread01), Mathf.Lerp(0.48f, 1.05f, spread01));
+        var emission = groundGas.emission;
+        emission.rateOverTime = ventilationActive ? 0f : leakIsolated ? 3f : Mathf.Lerp(14f, 34f, spread01);
+        if (aerialGas != null)
+        {
+            var aerialShape = aerialGas.shape;
+            aerialShape.radius = radius * 0.65f;
+            var aerialMain = aerialGas.main;
+            aerialMain.startSize = new ParticleSystem.MinMaxCurve(
+                Mathf.Lerp(0.35f, 0.7f, spread01), Mathf.Lerp(0.7f, 1.35f, spread01));
+            var aerialEmission = aerialGas.emission;
+            aerialEmission.rateOverTime = ventilationActive ? 0f : leakIsolated ? 1.5f :
+                Mathf.Lerp(6f, 16f, spread01);
+        }
+    }
+
+    private static void ConfigureGasRenderer(ParticleSystemRenderer renderer)
+    {
+        Shader shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+        if (shader == null) shader = Shader.Find("Particles/Standard Unlit");
         if (shader == null) shader = Shader.Find("Sprites/Default");
         if (shader != null)
-            renderer.material = new Material(shader);
+        {
+            Material material = new Material(shader) { color = Color.white };
+            Texture2D softParticle = CreateSoftGasTexture();
+            if (material.HasProperty("_BaseMap")) material.SetTexture("_BaseMap", softParticle);
+            if (material.HasProperty("_MainTex")) material.SetTexture("_MainTex", softParticle);
+            renderer.material = material;
+        }
         renderer.renderMode = ParticleSystemRenderMode.Billboard;
-        plume.Play(true);
-        return plume;
+        renderer.sortMode = ParticleSystemSortMode.Distance;
+    }
+
+    private static Texture2D CreateSoftGasTexture()
+    {
+        const int size = 64;
+        Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        texture.name = "Soft Gas Particle";
+        for (int y = 0; y < size; y++)
+        for (int x = 0; x < size; x++)
+        {
+            float dx = (x + 0.5f) / size * 2f - 1f;
+            float dy = (y + 0.5f) / size * 2f - 1f;
+            float distance = Mathf.Sqrt(dx * dx + dy * dy);
+            float alpha = Mathf.Pow(Mathf.Clamp01(1f - distance), 2.2f);
+            texture.SetPixel(x, y, new Color(0.82f, 0.9f, 0.62f, alpha));
+        }
+        texture.Apply();
+        texture.wrapMode = TextureWrapMode.Clamp;
+        texture.filterMode = FilterMode.Bilinear;
+        return texture;
     }
 
     private void BuildDetector(Material body, Material screenMaterial)
@@ -404,7 +594,7 @@ public class GasLeakModuleController : MonoBehaviour
         Transform detector = TargetRoot("Portable Gas Detector",
             new Vector3(-1.15f, 1.05f, -1.65f), Quaternion.Euler(0f, 18f, 0f),
             new Vector3(0.42f, 0.55f, 0.3f));
-        GameObject detectorVisual = LoadVisual("GasTraining/GasDetector", detector,
+        GameObject detectorVisual = LoadVisual("GasTraining/PpeDetector", detector,
             "Gas Detector Visual", 0.24f, true, false);
         if (detectorVisual == null)
             PrimitiveChild("Detector Fallback", PrimitiveType.Cube, detector,
@@ -564,6 +754,7 @@ public class GasLeakModuleController : MonoBehaviour
         GameObject visual = Instantiate(prefab, parent);
         visual.name = name;
         visual.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+        GasTrainingMaterialUtility.Apply(visual, resourcePath);
 
         Renderer[] renderers = visual.GetComponentsInChildren<Renderer>(true);
         if (renderers.Length == 0)
@@ -646,11 +837,23 @@ public class GasLeakModuleController : MonoBehaviour
         bool accepted = false;
         switch (item)
         {
-            case "respirator": accepted = !respirator; respirator = true; break;
-            case "gloves": accepted = !gloves; gloves = true; break;
-            case "detector": accepted = !detector; detector = true; break;
+            case "respirator":
+                accepted = !respirator; respirator = true;
+                if (equippedMask != null) equippedMask.SetActive(true);
+                break;
+            case "gloves":
+                accepted = !gloves; gloves = true;
+                if (equippedGloves != null) equippedGloves.SetActive(true);
+                break;
+            case "detector":
+                accepted = !detector; detector = true;
+                if (equippedDetector != null) equippedDetector.SetActive(true);
+                break;
             default:
-                RecordWrong("That item is not required for this gas response step.");
+                button.GetComponent<Image>().color = new Color(0.72f, 0.12f, 0.12f, 1f);
+                RecordWrong(item == "medical"
+                    ? "A medical mask does not protect against toxic industrial gas."
+                    : "Garden gloves do not provide chemical protection.");
                 return;
         }
         if (!accepted) return;
@@ -697,6 +900,8 @@ public class GasLeakModuleController : MonoBehaviour
     {
         if (uiRoot == null) return;
         ppePanel.SetActive(step == Step.Ppe);
+        foreach (GameObject display in ppeDisplayObjects)
+            if (display != null) display.SetActive(step == Step.Ppe);
         buddyTarget?.gameObject.SetActive(step == Step.Buddy || step == Step.SafePoint);
         shutoffTarget?.gameObject.SetActive(step == Step.Shutoff);
         fanTarget?.gameObject.SetActive(step == Step.Ventilation || step == Step.SafePoint);
@@ -714,7 +919,7 @@ public class GasLeakModuleController : MonoBehaviour
                 tasks.text = "1  <b>Recognize hazard zone</b>\n2  PPE  3  Buddy  4  Isolate  5  Evacuate";
                 break;
             case Step.Ppe:
-                instruction.text = "Select SCBA respirator, chemical gloves, and gas detector";
+                instruction.text = "Select gas mask, protective gloves, and gas detector";
                 tasks.text = "1  <s>Hazard recognized</s>\n2  <b>Select required PPE</b>  3  Buddy  4  Isolate";
                 break;
             case Step.Buddy:
@@ -776,21 +981,24 @@ public class GasLeakModuleController : MonoBehaviour
         ConfigureAutoSize(tasks, 23f, 29f);
 
         ppePanel = Panel(uiRoot.transform, "PPE Selection", Card,
-            new Vector2(55, 65), new Vector2(970, 300), new Vector2(0, 0), new Vector2(0, 0));
+            new Vector2(55, 45), new Vector2(970, 320), new Vector2(0, 0), new Vector2(0, 0));
         Label(ppePanel.transform, "SELECT REQUIRED PPE", 26, FontStyles.Bold,
             new Vector2(35, -22), new Vector2(880, 42), TextAlignmentOptions.Center, Orange);
-        respiratorButton = ActionButton(ppePanel.transform, "SCBA Respirator", Peach,
+        respiratorButton = ActionButton(ppePanel.transform, "Gas Mask / Respirator", Peach,
             new Vector2(25, -85), new Vector2(285, 85));
-        glovesButton = ActionButton(ppePanel.transform, "Chemical Gloves", Peach,
+        glovesButton = ActionButton(ppePanel.transform, "Protective Gloves", Peach,
             new Vector2(342, -85), new Vector2(285, 85));
         detectorButton = ActionButton(ppePanel.transform, "Gas Detector", Peach,
             new Vector2(659, -85), new Vector2(285, 85));
-        Button wrong = ActionButton(ppePanel.transform, "Cotton Cap", CardDark,
-            new Vector2(342, -190), new Vector2(285, 75));
+        medicalMaskButton = ActionButton(ppePanel.transform, "Medical Mask", CardDark,
+            new Vector2(180, -190), new Vector2(285, 75));
+        gardenGlovesButton = ActionButton(ppePanel.transform, "Garden Gloves", CardDark,
+            new Vector2(505, -190), new Vector2(285, 75));
         respiratorButton.onClick.AddListener(() => SelectPpe("respirator", respiratorButton));
         glovesButton.onClick.AddListener(() => SelectPpe("gloves", glovesButton));
         detectorButton.onClick.AddListener(() => SelectPpe("detector", detectorButton));
-        wrong.onClick.AddListener(() => SelectPpe("wrong", wrong));
+        medicalMaskButton.onClick.AddListener(() => SelectPpe("medical", medicalMaskButton));
+        gardenGlovesButton.onClick.AddListener(() => SelectPpe("garden", gardenGlovesButton));
 
         scoreText = PanelLabel(uiRoot.transform, "", new Vector2(110, -620),
             new Vector2(860, 330), 38);
@@ -812,7 +1020,11 @@ public class GasLeakModuleController : MonoBehaviour
         leakTarget = hazardTarget = buddyTarget = shutoffTarget = fanTarget = gasExitTarget = safeTarget = null;
         fanBlades = null;
         gasPlume = null;
+        groundGas = null;
+        aerialGas = null;
         detectorDisplay = null;
+        equippedMask = equippedGloves = equippedDetector = null;
+        ppeDisplayObjects.Clear();
         hissAudio = alarmAudio = null;
         incorrect = 0;
         ppeSelected = 0;
@@ -826,6 +1038,8 @@ public class GasLeakModuleController : MonoBehaviour
             ResetPpeButton(respiratorButton);
             ResetPpeButton(glovesButton);
             ResetPpeButton(detectorButton);
+            ResetPpeButton(medicalMaskButton);
+            ResetPpeButton(gardenGlovesButton);
         }
         step = Step.Place;
         startedAt = Time.unscaledTime;
