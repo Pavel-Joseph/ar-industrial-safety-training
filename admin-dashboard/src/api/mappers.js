@@ -1,4 +1,5 @@
 const QR_SERVER_BASE = "https://api.qrserver.com/v1/create-qr-code/";
+const PUBLIC_VERIFICATION_BASE = "https://ar-industrial-safety-api.onrender.com";
 
 function buildQrCodeUrl(verificationUrl) {
   const url = verificationUrl || "https://example.test/verify/placeholder";
@@ -47,7 +48,7 @@ export function mapResult(result) {
 }
 
 export function mapCertificate(certificate) {
-  const verificationUrl = certificate.verificationUrl || `${typeof window !== "undefined" ? window.location.origin : "https://example.test"}/verify/${certificate.publicId}`;
+  const verificationUrl = certificate.verificationUrl || `${PUBLIC_VERIFICATION_BASE}/verify/${certificate.publicId}`;
   return {
     id: certificate.id,
     certificateCode: certificate.publicId,
@@ -65,7 +66,7 @@ export function mapCertificate(certificate) {
 }
 
 export function mapVerification(verification) {
-  const verificationUrl = verification.verificationUrl || `${typeof window !== "undefined" ? window.location.origin : "https://example.test"}/verify/${verification.publicId}`;
+  const verificationUrl = verification.verificationUrl || `${PUBLIC_VERIFICATION_BASE}/verify/${verification.publicId}`;
   return {
     certificateCode: verification.publicId,
     status: verification.status,

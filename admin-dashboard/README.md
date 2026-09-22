@@ -16,7 +16,7 @@ Open **http://localhost:5173**. Sign in using the deployed backend's `DEMO_ADMIN
 
 The Render backend's production `CORS_ORIGIN` is `https://ar-industrial-safety-training.vercel.app`. If the dashboard origin changes, update `CORS_ORIGIN` in the Render service/Blueprint and redeploy the backend. Browser CORS applies to dashboard requests even when the API URL works in Postman. For local dashboard development, temporarily allow `http://localhost:5173` in the backend configuration.
 
-For production, `PUBLIC_BASE_URL` on Render must also be the dashboard origin. It makes generated certificate QR codes point to the public dashboard route, such as `https://ar-industrial-safety-training.vercel.app/verify/<public-id>`. `vercel.json` rewrites direct verification links to the React app, so scans and fresh browser tabs work without signing in.
+For production, `PUBLIC_BASE_URL` on Render is `https://ar-industrial-safety-api.onrender.com`. Every generated certificate QR code therefore points to the backend's public verification page at `https://ar-industrial-safety-api.onrender.com/verify/<public-id>`. This route is public and works without an administrator session.
 
 The URL in `VITE_API_BASE_URL` is public and bundled into client JavaScript; never put passwords, JWTs, or database URLs in a `VITE_` variable. Admin JWTs are obtained through login. HTTPS is required for a hosted dashboard and API.
 

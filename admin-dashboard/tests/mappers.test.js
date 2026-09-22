@@ -37,6 +37,8 @@ test("backend records are mapped to the dashboard without inventing site or pend
   });
   assert.equal(cert.certificateCode, "public-uuid");
   assert.equal(cert.status, "expired");
+  assert.equal(cert.verificationUrl, "https://ar-industrial-safety-api.onrender.com/verify/public-uuid");
+  assert.match(cert.qrCodeUrl, /ar-industrial-safety-api\.onrender\.com%2Fverify%2Fpublic-uuid/);
   assert.equal(summarize([worker], [attempt], [cert]).certificateCount, 0);
   assert.equal(summarize([worker], [attempt], [cert]).pendingSyncCount, 0);
 });
@@ -48,4 +50,6 @@ test("public verification maps the public ID and status", () => {
   });
   assert.equal(record.certificateCode, "public-uuid");
   assert.equal(record.status, "revoked");
+  assert.equal(record.verificationUrl, "https://ar-industrial-safety-api.onrender.com/verify/public-uuid");
+  assert.match(record.qrCodeUrl, /ar-industrial-safety-api\.onrender\.com%2Fverify%2Fpublic-uuid/);
 });
