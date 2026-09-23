@@ -246,7 +246,6 @@ public class TapToPlace : MonoBehaviour
         AttachVisualToTarget("ExtinguisherVisual", extinguisherRoot);
         AttachVisualToTarget("ExtinguisherLabel", extinguisherRoot);
         AttachVisualToTarget("AssemblyLabel", assemblyRoot);
-        AttachAssemblyLocationMarker();
         FitVisualHeight(exitRoot != null ? exitRoot.Find("ExitDoorVisual") : null, 2.1f);
         FitVisualHeight(extinguisherRoot != null ? extinguisherRoot.Find("ExtinguisherVisual") : null, 0.68f);
         EnsureTouchTarget(exitRoot, "ExitTouchZone", new Vector3(1.35f, 2.3f, 0.75f));
@@ -370,6 +369,7 @@ public class TapToPlace : MonoBehaviour
             if (away.sqrMagnitude < 0.01f) away = placedCube.transform.forward;
             assemblyRoot.position = new Vector3(exitRoot.position.x, floorY + 0.025f, exitRoot.position.z) + away * 2.8f;
             assemblyRoot.rotation = Quaternion.LookRotation(-away, Vector3.up);
+            AttachAssemblyLocationMarker();
             assemblyRoot.gameObject.SetActive(true);
         }
         wallObjectsPlaced = true;

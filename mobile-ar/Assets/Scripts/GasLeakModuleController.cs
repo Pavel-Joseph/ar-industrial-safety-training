@@ -358,15 +358,16 @@ public class GasLeakModuleController : MonoBehaviour
             "Round Assembly Platform", 1.8f, false, true);
         Transform locationMount = new GameObject("Horizontal Location Marker Mount").transform;
         locationMount.SetParent(safeTarget, false);
-        locationMount.localRotation = Quaternion.Euler(90f, 180f, 0f);
+        // The source FBX faces down after Unity's axis conversion. Reverse its
+        // pitch so the visible marker faces up above the assembly platform.
+        locationMount.localRotation = Quaternion.Euler(-90f, 180f, 0f);
         GameObject safeVisual = LoadVisual("GasTraining/AssemblyLocation", locationMount,
             "Assembly Location Visual", 1.1f, false, true);
         if (safeVisual != null && safePlatform != null)
         {
             Renderer platformRenderer = safePlatform.GetComponentInChildren<Renderer>();
             if (platformRenderer != null)
-                safeVisual.transform.position += Vector3.up *
-                    Mathf.Max(0f, platformRenderer.bounds.max.y - safeTarget.position.y);
+                PlaceVisualBottomAt(safeVisual, platformRenderer.bounds.max.y + 0.01f);
         }
         if (safeVisual == null)
             PrimitiveChild("Safe Point Fallback", PrimitiveType.Cylinder, safeTarget,
@@ -812,6 +813,16 @@ public class GasLeakModuleController : MonoBehaviour
         foreach (Collider collider in visual.GetComponentsInChildren<Collider>(true))
             collider.enabled = false;
         return visual;
+    }
+
+    private static void PlaceVisualBottomAt(GameObject visual, float worldY)
+    {
+        if (visual == null) return;
+        Renderer[] renderers = visual.GetComponentsInChildren<Renderer>(true);
+        if (renderers.Length == 0) return;
+        Bounds bounds = renderers[0].bounds;
+        for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+        visual.transform.position += Vector3.up * (worldY - bounds.min.y);
     }
 
     private static GameObject PrimitiveChild(string name, PrimitiveType type, Transform parent,
